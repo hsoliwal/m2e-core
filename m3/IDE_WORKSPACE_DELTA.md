@@ -51,6 +51,35 @@ toolchain, dependency and source-root digests. Maven consumers must bind those
 from independently verified build context, and must treat missing information as
 reconciliation, not a cache hit.
 
+## Explicit handoff to Maven 4
+
+A client that explicitly wants Maven to inspect its **already captured** Eclipse
+snapshot can write one versioned packet under the project root. This is an
+additional opt-in method on the existing source owner, **not** an automatic
+Eclipse builder side effect:
+
+```java
+var snapshot = (M3WorkspaceDelta.Snapshot)
+    facade.getSessionProperty(M3WorkspaceDeltaBuildParticipant.PROPERTY);
+if (snapshot != null) {
+    M3WorkspaceDelta.writeSnapshot(snapshot,
+        facade.getProject().getLocation().toFile().toPath(),
+        Path.of("target/ide/changes.ide"));
+}
+```
+
+The output parent directory must already exist. The method refuses out-of-project
+paths, symlinks and conflicting destination bytes, and reuses an identical packet
+without overwriting it. It does not create or advance a build-generation counter,
+compute model/toolchain/dependency hashes, or launch Maven. A project can choose
+a new path per generation instead of overwriting a previous packet. If the file
+is visible to Eclipse, the caller is responsible for treating it as a derived
+build artifact and avoiding recursive build notifications.
+
+The Maven 4 `m3-ide-bridge-maven-plugin:ide-assess` goal added in Maven PR #106
+reads these exact bytes and requires real externally supplied build context.
+It never authorizes Maven goal skipping.
+
 A separate Visual Studio adapter can invoke Maven's normal lifecycle via an
 explicit MSBuild target or Open Folder `tasks.vs.json`. This m2e helper is not a
 VSIX, nor an IDE plugin installation.

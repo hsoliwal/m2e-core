@@ -9,7 +9,17 @@
  *******************************************************************************/
 package org.eclipse.m2e.core.project.configurator;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.channels.Channels;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.Arrays;
+import java.util.Set;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -186,6 +196,52 @@ public final class M3WorkspaceDelta {
       snapshot.add(change);
     }
     return new Snapshot(name, buildKind, complete[0], snapshot);
+  }
+
+  /**
+   * Explicitly export one original Eclipse delta to a caller-selected project
+   * file, without registering any new builder, watcher or filesystem scanner.
+   *
+   * Existing matching bytes are idempotent; conflicting paths are never
+   * overwritten. Parents must already exist and contain no symbolic links.
+   * The recipient must treat the packet as untrusted, advisory evidence.
+   */
+  public static Path writeSnapshot(Snapshot snapshot, Path projectRoot, Path packetFile) throws IOException {
+    Objects.requireNonNull(snapshot, "snapshot");
+    Path root = Objects.requireNonNull(projectRoot, "projectRoot").toRealPath();
+    Path requested = Objects.requireNonNull(packetFile, "packetFile");
+    Path file = (requested.isAbsolute() ? requested : root.resolve(requested)).normalize();
+    if(!file.startsWith(root) || file.equals(root)) {
+      throw new IOException("IDE packet destination must be project-local");
+    }
+    Path cursor = root;
+    for(Path segment : root.relativize(file)) {
+      cursor = cursor.resolve(segment);
+      if(Files.isSymbolicLink(cursor)) {
+        throw new IOException("IDE packet destination traverses a symbolic link");
+      }
+    }
+    if(!Files.isDirectory(file.getParent(), LinkOption.NOFOLLOW_LINKS)) {
+      throw new IOException("IDE packet parent must already exist");
+    }
+    byte[] expected = snapshot.toExchangeBytes();
+    if(Files.exists(file, LinkOption.NOFOLLOW_LINKS)) {
+      BasicFileAttributes attributes = Files.readAttributes(
+          file, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
+      if(!attributes.isRegularFile() || attributes.size() != expected.length) {
+        throw new IOException("conflicting IDE packet destination");
+      }
+      try(InputStream input = Channels.newInputStream(
+          Files.newByteChannel(file, Set.of(StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS)))) {
+        if(Arrays.equals(input.readNBytes(expected.length + 1), expected)) {
+          return file;
+        }
+      }
+      throw new IOException("conflicting IDE packet content");
+    }
+    Files.write(file, expected,
+        StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE, LinkOption.NOFOLLOW_LINKS);
+    return file;
   }
 
   private static void validateUnicode(String text) {
