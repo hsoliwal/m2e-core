@@ -24,6 +24,13 @@ Tests: `org.eclipse.m2e.core.tests/src/org/eclipse/m2e/core/M3WorkspaceDeltaTest
 validates sorting, marker-only changes, source removal, generated outputs,
 unsafe project-relative names, cold builds and duplicate callbacks.
 
+The `Snapshot.toExchangeBytes()` method exports only the owner-provided paths
+and change kinds using `M3-IDE-DELTA-V1`, for the companion
+`M3ExternalBuildWire.decode(...)` in Maven. It omits all fabricated model,
+toolchain, dependency and source-root digests. Maven consumers must bind those
+from independently verified build context, and must treat missing information as
+reconciliation, not a cache hit.
+
 A separate Visual Studio adapter can invoke Maven's normal lifecycle via an
 explicit MSBuild target or Open Folder `tasks.vs.json`. This m2e helper is not a
 VSIX, nor an IDE plugin installation.

@@ -65,6 +65,18 @@ public class M3WorkspaceDeltaTest {
   }
 
   @Test
+  public void ownerExchangeFormatPreservesProjectAndSortedChanges() throws Exception {
+    var original = M3WorkspaceDelta.capture(project(), IncrementalProjectBuilder.INCREMENTAL_BUILD,
+        delta(file("src/Z.java", IResourceDelta.REMOVED, 0, false),
+            file("src/A.java", IResourceDelta.ADDED, 0, false)), null);
+    String wire = new String(original.toExchangeBytes(), java.nio.charset.StandardCharsets.UTF_8);
+    assertTrue(wire.startsWith("M3-IDE-DELTA-V1\nprovider\teclipse.m2e\n"));
+    assertTrue(wire.contains("kind\tINCREMENTAL\ncomplete\ttrue\n"));
+    assertTrue(wire.indexOf("src/A.java") < wire.indexOf("src/Z.java"));
+    assertFalse(original.authorizesMavenGoalSkipping());
+  }
+
+  @Test
   public void cancellationNeverPublishesAnIncompleteCaptureAsSuccess() throws Exception {
     var canceled = (org.eclipse.core.runtime.IProgressMonitor) Proxy.newProxyInstance(
         org.eclipse.core.runtime.IProgressMonitor.class.getClassLoader(),

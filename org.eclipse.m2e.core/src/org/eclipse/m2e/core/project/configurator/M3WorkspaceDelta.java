@@ -9,7 +9,9 @@
  *******************************************************************************/
 package org.eclipse.m2e.core.project.configurator;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -52,7 +54,46 @@ public final class M3WorkspaceDelta {
       if(projectName.isBlank()) {
         throw new IllegalArgumentException("empty project name");
       }
+      if(projectName.length() > 256 || projectName.chars().anyMatch(Character::isISOControl)) {
+        throw new IllegalArgumentException("invalid project name for external exchange");
+      }
+      validateUnicode(projectName);
       changes = List.copyOf(changes);
+    }
+
+    /**
+     * Original owner changes in the M3-IDE-DELTA-V1 wire format.
+     * No source hashing or Maven 4 runtime is required in this Eclipse bundle.
+     */
+    public byte[] toExchangeBytes() {
+      String kind = switch(buildKind) {
+        case IncrementalProjectBuilder.FULL_BUILD -> "FULL";
+        case IncrementalProjectBuilder.CLEAN_BUILD -> "CLEAN";
+        case IncrementalProjectBuilder.INCREMENTAL_BUILD -> "INCREMENTAL";
+        case IncrementalProjectBuilder.AUTO_BUILD -> "AUTO";
+        default -> throw new IllegalArgumentException("unsupported Eclipse build kind");
+      };
+      String project64 = Base64.getUrlEncoder().withoutPadding()
+          .encodeToString(projectName.getBytes(StandardCharsets.UTF_8));
+      StringBuilder text = new StringBuilder("M3-IDE-DELTA-V1\n")
+          .append("provider\teclipse.m2e\n")
+          .append("project64\t").append(project64).append('\n')
+          .append("kind\t").append(kind).append('\n')
+          .append("complete\t").append(deltaComplete).append('\n');
+      String previous = null;
+      for(Change change : changes) {
+        if(previous != null && previous.compareTo(change.projectRelativePath()) >= 0) {
+          throw new IllegalArgumentException("unorderable Eclipse source changes");
+        }
+        text.append("change\t").append(change.kind()).append('\t')
+            .append(change.projectRelativePath()).append('\n');
+        previous = change.projectRelativePath();
+      }
+      byte[] bytes = text.toString().getBytes(StandardCharsets.UTF_8);
+      if(bytes.length > 8 * 1024 * 1024) {
+        throw new IllegalArgumentException("external IDE exchange byte budget exceeded");
+      }
+      return bytes;
     }
 
     /** A host delta is never permission to skip a Maven goal. */
@@ -132,6 +173,19 @@ public final class M3WorkspaceDelta {
       snapshot.add(change);
     }
     return new Snapshot(name, buildKind, complete[0], snapshot);
+  }
+
+  private static void validateUnicode(String text) {
+    for(int index = 0; index < text.length(); index++) {
+      char c = text.charAt(index);
+      if(Character.isHighSurrogate(c)) {
+        if(++index >= text.length() || !Character.isLowSurrogate(text.charAt(index))) {
+          throw new IllegalArgumentException("malformed Unicode in IDE owner identity");
+        }
+      } else if(Character.isLowSurrogate(c)) {
+        throw new IllegalArgumentException("malformed Unicode in IDE owner identity");
+      }
+    }
   }
 
   private static String checkedPath(String path) {
