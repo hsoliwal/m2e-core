@@ -14,8 +14,11 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.Proxy;
 import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
@@ -23,7 +26,9 @@ import org.eclipse.core.resources.IResourceDelta;
 import org.eclipse.core.resources.IResourceDeltaVisitor;
 import org.eclipse.core.resources.IncrementalProjectBuilder;
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.m2e.core.project.IMavenProjectFacade;
 import org.eclipse.m2e.core.project.configurator.M3WorkspaceDelta;
+import org.eclipse.m2e.core.project.configurator.M3WorkspaceDeltaBuildParticipant;
 import org.junit.Test;
 
 /** Read-only source owner delta fixture; no Maven or JDT compiler is executed. */
@@ -110,6 +115,58 @@ public class M3WorkspaceDeltaTest {
         // Expected: no unsafe path can cross the Maven boundary.
       }
     }
+  }
+
+  @Test
+  public void participantInvalidatesStaleSnapshotBeforeFailedCapture() throws Exception {
+    AtomicBoolean failName = new AtomicBoolean(true);
+    IProject project = (IProject) Proxy.newProxyInstance(IProject.class.getClassLoader(),
+        new Class<?>[] {IProject.class}, (proxy, method, args) -> {
+          if(method.getName().equals("getName")) {
+            if(failName.get()) {
+              throw new IllegalStateException("fixture build interruption");
+            }
+            return "fixture";
+          }
+          throw new AssertionError("unexpected project method " + method.getName());
+        });
+    AtomicReference<Object> saved = new AtomicReference<>(new Object());
+    AtomicReference<Integer> publications = new AtomicReference<>(0);
+    IMavenProjectFacade facade = (IMavenProjectFacade) Proxy.newProxyInstance(
+        IMavenProjectFacade.class.getClassLoader(), new Class<?>[] {IMavenProjectFacade.class},
+        (proxy, method, args) -> switch(method.getName()) {
+          case "getProject" -> project;
+          case "setSessionProperty" -> {
+            assertEquals(M3WorkspaceDeltaBuildParticipant.PROPERTY, args[0]);
+            publications.set(publications.get() + 1);
+            saved.set(args[1]);
+            yield null;
+          }
+          default -> throw new AssertionError("unexpected facade method " + method.getName());
+        });
+    var participant = new M3WorkspaceDeltaBuildParticipant();
+    // The original m2e owner installs the participant facade; do not add
+    // a parallel project registry to production code merely for this test.
+    Field owner = participant.getClass().getSuperclass().getSuperclass().getDeclaredField("facade");
+    owner.setAccessible(true);
+    owner.set(participant, facade);
+
+    try {
+      participant.build(IncrementalProjectBuilder.FULL_BUILD, null);
+      fail("failed capture reused an earlier completed workspace snapshot");
+    } catch(IllegalStateException expected) {
+      assertEquals("fixture build interruption", expected.getMessage());
+    }
+    assertEquals(1, publications.get().intValue());
+    assertTrue("failed capture must revoke stale advice", saved.get() == null);
+
+    failName.set(false);
+    participant.build(IncrementalProjectBuilder.FULL_BUILD, null);
+    assertEquals(3, publications.get().intValue());
+    assertTrue(saved.get() instanceof M3WorkspaceDelta.Snapshot);
+    assertFalse(((M3WorkspaceDelta.Snapshot) saved.get()).deltaComplete());
+    participant.clean(null);
+    assertTrue("clean must revoke the last snapshot", saved.get() == null);
   }
 
   private static IProject project() {

@@ -32,6 +32,9 @@ public final class M3WorkspaceDeltaBuildParticipant extends AbstractBuildPartici
     if(facade == null) {
       return Set.of();
     }
+    // Invalidate the preceding generation before any operation that can fail.
+    // Otherwise a failed/cancelled Eclipse build leaves stale advice visible.
+    facade.setSessionProperty(PROPERTY, null);
     IProject project = facade.getProject();
     IResourceDelta delta = kind == IncrementalProjectBuilder.INCREMENTAL_BUILD
         || kind == IncrementalProjectBuilder.AUTO_BUILD ? getDelta(project) : null;
