@@ -9,12 +9,17 @@
  *******************************************************************************/
 package org.eclipse.m2e.core;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.io.IOException;
 import java.lang.reflect.Field;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
 import java.lang.reflect.Proxy;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -209,6 +214,65 @@ public class M3WorkspaceDeltaTest {
       } catch(org.eclipse.core.runtime.OperationCanceledException expected) {
         // Cancellation preserves Eclipse's original build lifecycle.
       }
+    }
+  }
+
+  @Test
+  public void explicitPacketExportIsIdempotentAndConflictsFailClosed() throws Exception {
+    Path root = Files.createTempDirectory("m3-ide-export-");
+    Path parent = Files.createDirectory(root.resolve("target"));
+    Path file = parent.resolve("owner.ide");
+    var snapshot = new M3WorkspaceDelta.Snapshot("fixture",
+        IncrementalProjectBuilder.INCREMENTAL_BUILD, true,
+        List.of(new M3WorkspaceDelta.Change("src/A.java", M3WorkspaceDelta.Kind.MODIFIED)));
+    var different = new M3WorkspaceDelta.Snapshot("fixture",
+        IncrementalProjectBuilder.INCREMENTAL_BUILD, false, List.of());
+    try {
+      assertEquals(file, M3WorkspaceDelta.writeSnapshot(snapshot, root, Path.of("target/owner.ide")));
+      assertArrayEquals(snapshot.toExchangeBytes(), Files.readAllBytes(file));
+      assertEquals(file, M3WorkspaceDelta.writeSnapshot(snapshot, root, file));
+      try {
+        M3WorkspaceDelta.writeSnapshot(different, root, file);
+        fail("different owner delta silently replaced a previous packet");
+      } catch(IOException expected) {
+        assertArrayEquals(snapshot.toExchangeBytes(), Files.readAllBytes(file));
+      }
+      try {
+        M3WorkspaceDelta.writeSnapshot(snapshot, root, Path.of("../escape.ide"));
+        fail("accepted path traversal outside the Maven project");
+      } catch(IOException expected) {
+        // A caller cannot export to another project or the workspace parent.
+      }
+    } finally {
+      Files.deleteIfExists(file);
+      Files.deleteIfExists(parent);
+      Files.deleteIfExists(root);
+    }
+  }
+
+  @Test
+  public void explicitPacketExportRejectsSymlinkAncestors() throws Exception {
+    Path root = Files.createTempDirectory("m3-ide-link-");
+    Path actual = Files.createDirectory(root.resolve("actual"));
+    Path link = root.resolve("link");
+    var snapshot = new M3WorkspaceDelta.Snapshot("fixture",
+        IncrementalProjectBuilder.FULL_BUILD, false, List.of());
+    try {
+      try {
+        Files.createSymbolicLink(link, actual);
+      } catch(UnsupportedOperationException | IOException | SecurityException noSymlinks) {
+        return;
+      }
+      try {
+        M3WorkspaceDelta.writeSnapshot(snapshot, root, Path.of("link/owner.ide"));
+        fail("accepted symbolic link in IDE packet path");
+      } catch(IOException expected) {
+        assertFalse(Files.exists(actual.resolve("owner.ide")));
+      }
+    } finally {
+      Files.deleteIfExists(link);
+      Files.deleteIfExists(actual);
+      Files.deleteIfExists(root);
     }
   }
 
