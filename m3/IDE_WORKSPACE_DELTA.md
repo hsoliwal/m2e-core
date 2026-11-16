@@ -62,7 +62,8 @@ Eclipse builder side effect:
 var snapshot = (M3WorkspaceDelta.Snapshot)
     facade.getSessionProperty(M3WorkspaceDeltaBuildParticipant.PROPERTY);
 if (snapshot != null) {
-    M3WorkspaceDelta.writeSnapshot(snapshot, project.basedir(),
+    M3WorkspaceDelta.writeSnapshot(snapshot,
+        facade.getProject().getLocation().toFile().toPath(),
         Path.of("target/ide/changes.ide"));
 }
 ```
