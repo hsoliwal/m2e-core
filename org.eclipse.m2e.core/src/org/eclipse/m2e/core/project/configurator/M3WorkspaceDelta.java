@@ -111,6 +111,9 @@ public final class M3WorkspaceDelta {
   public static Snapshot capture(IProject project, int buildKind, IResourceDelta delta, IProgressMonitor monitor)
       throws CoreException {
     Objects.requireNonNull(project, "project");
+    if(monitor != null && monitor.isCanceled()) {
+      throw new OperationCanceledException();
+    }
     String name = project.getName();
     if(buildKind == IncrementalProjectBuilder.FULL_BUILD
         || buildKind == IncrementalProjectBuilder.CLEAN_BUILD || delta == null) {
@@ -132,10 +135,20 @@ public final class M3WorkspaceDelta {
         complete[0] = false;
         return true;
       }
+      // A removed/added container may have no child file deltas to traverse.
+      // Moves/replacements may also invalidate source roots and classpaths.
+      int kindCode = node.getKind();
+      int flags = node.getFlags();
+      if((flags & (IResourceDelta.MOVED_FROM | IResourceDelta.MOVED_TO | IResourceDelta.REPLACED)) != 0) {
+        complete[0] = false;
+      }
       if(resource.getType() != IResource.FILE) {
+        if(kindCode == IResourceDelta.ADDED || kindCode == IResourceDelta.REMOVED) {
+          complete[0] = false;
+        }
         return true;
       }
-      Kind kind = switch(node.getKind()) {
+      Kind kind = switch(kindCode) {
         case IResourceDelta.ADDED -> Kind.ADDED;
         case IResourceDelta.CHANGED -> Kind.MODIFIED;
         case IResourceDelta.REMOVED -> Kind.DELETED;
@@ -146,7 +159,7 @@ public final class M3WorkspaceDelta {
         return true;
       }
       // Marker-only workspace updates are not a source content modification.
-      if(kind == Kind.MODIFIED && node.getFlags() == IResourceDelta.MARKERS) {
+      if(kind == Kind.MODIFIED && flags == IResourceDelta.MARKERS) {
         return true;
       }
       if(resource.isLinked(IResource.CHECK_ANCESTORS) || resource.isDerived(IResource.CHECK_ANCESTORS)) {

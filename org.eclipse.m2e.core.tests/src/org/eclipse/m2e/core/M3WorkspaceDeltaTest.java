@@ -169,6 +169,49 @@ public class M3WorkspaceDeltaTest {
     assertTrue("clean must revoke the last snapshot", saved.get() == null);
   }
 
+  @Test
+  public void directoryAndProjectMutationsCannotClaimCompleteFileDelta() throws Exception {
+    var deletedFolder = M3WorkspaceDelta.capture(project(), IncrementalProjectBuilder.INCREMENTAL_BUILD,
+        delta(folder("src/generated", IResourceDelta.REMOVED, 0)), null);
+    assertFalse(deletedFolder.deltaComplete());
+    assertTrue(deletedFolder.changes().isEmpty());
+    var addedFolder = M3WorkspaceDelta.capture(project(), IncrementalProjectBuilder.AUTO_BUILD,
+        delta(folder("src/new", IResourceDelta.ADDED, 0)), null);
+    assertFalse(addedFolder.deltaComplete());
+    assertTrue(addedFolder.changes().isEmpty());
+  }
+
+  @Test
+  public void movedAndReplacedResourcesRequireReconciliation() throws Exception {
+    for(int flag : new int[] {IResourceDelta.MOVED_FROM, IResourceDelta.MOVED_TO, IResourceDelta.REPLACED}) {
+      var moved = M3WorkspaceDelta.capture(project(), IncrementalProjectBuilder.INCREMENTAL_BUILD,
+          delta(file("src/A.java", IResourceDelta.CHANGED, IResourceDelta.CONTENT | flag, false)), null);
+      assertFalse(moved.deltaComplete());
+      assertEquals(1, moved.changes().size());
+      assertEquals("src/A.java", moved.changes().get(0).projectRelativePath());
+    }
+  }
+
+  @Test
+  public void cancellationIsHonoredEvenForFullAndCleanBuilds() throws Exception {
+    var canceled = (org.eclipse.core.runtime.IProgressMonitor) Proxy.newProxyInstance(
+        org.eclipse.core.runtime.IProgressMonitor.class.getClassLoader(),
+        new Class<?>[] {org.eclipse.core.runtime.IProgressMonitor.class}, (proxy, method, args) -> {
+          if(method.getName().equals("isCanceled")) {
+            return true;
+          }
+          throw new AssertionError("unexpected monitor method " + method.getName());
+        });
+    for(int kind : new int[] {IncrementalProjectBuilder.FULL_BUILD, IncrementalProjectBuilder.CLEAN_BUILD}) {
+      try {
+        M3WorkspaceDelta.capture(project(), kind, null, canceled);
+        fail("canceled full/clean build produced a new snapshot");
+      } catch(org.eclipse.core.runtime.OperationCanceledException expected) {
+        // Cancellation preserves Eclipse's original build lifecycle.
+      }
+    }
+  }
+
   private static IProject project() {
     return (IProject) Proxy.newProxyInstance(IProject.class.getClassLoader(), new Class<?>[] {IProject.class},
         (proxy, method, args) -> {
@@ -179,10 +222,14 @@ public class M3WorkspaceDeltaTest {
         });
   }
 
-  private record DeltaEntry(String path, int kind, int flags, boolean derived) {}
+  private record DeltaEntry(String path, int kind, int flags, boolean derived, int type) {}
 
   private static DeltaEntry file(String path, int kind, int flags, boolean derived) {
-    return new DeltaEntry(path, kind, flags, derived);
+    return new DeltaEntry(path, kind, flags, derived, IResource.FILE);
+  }
+
+  private static DeltaEntry folder(String path, int kind, int flags) {
+    return new DeltaEntry(path, kind, flags, false, IResource.FOLDER);
   }
 
   private static IResourceDelta delta(DeltaEntry... entries) {
@@ -201,7 +248,7 @@ public class M3WorkspaceDeltaTest {
   }
 
   private static IResourceDelta change(DeltaEntry entry) {
-    IResource resource = resource(entry.path(), entry.derived());
+    IResource resource = resource(entry.path(), entry.derived(), entry.type());
     return (IResourceDelta) Proxy.newProxyInstance(IResourceDelta.class.getClassLoader(),
         new Class<?>[] {IResourceDelta.class}, (proxy, method, args) -> switch(method.getName()) {
           case "getResource" -> resource;
@@ -211,7 +258,7 @@ public class M3WorkspaceDeltaTest {
         });
   }
 
-  private static IResource resource(String path, boolean derived) {
+  private static IResource resource(String path, boolean derived, int type) {
     IPath relative = (IPath) Proxy.newProxyInstance(IPath.class.getClassLoader(),
         new Class<?>[] {IPath.class}, (proxy, method, args) -> {
           if(method.getName().equals("toPortableString")) {
@@ -221,7 +268,7 @@ public class M3WorkspaceDeltaTest {
         });
     return (IResource) Proxy.newProxyInstance(IResource.class.getClassLoader(),
         new Class<?>[] {IResource.class}, (proxy, method, args) -> switch(method.getName()) {
-          case "getType" -> IResource.FILE;
+          case "getType" -> type;
           case "getProjectRelativePath" -> relative;
           case "isLinked" -> false;
           case "isDerived" -> derived;
