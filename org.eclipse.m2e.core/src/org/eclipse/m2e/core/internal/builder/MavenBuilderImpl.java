@@ -69,6 +69,8 @@ import org.eclipse.m2e.core.internal.markers.SourceLocationHelper;
 import org.eclipse.m2e.core.project.IMavenProjectFacade;
 import org.eclipse.m2e.core.project.MavenProjectUtils;
 import org.eclipse.m2e.core.project.configurator.AbstractBuildParticipant;
+import org.eclipse.m2e.core.project.configurator.M3WorkspaceDelta;
+import org.eclipse.m2e.core.project.configurator.M3WorkspaceDeltaBuildParticipant;
 import org.eclipse.m2e.core.project.configurator.MojoExecutionKey;
 
 
@@ -122,6 +124,25 @@ public class MavenBuilderImpl {
 
     DeltaProvider deltaProvider = getDeltaProvider();
     IResourceDelta delta = deltaProvider.getDelta(project);
+
+    // Optional source-owner capture. This runs before the IRRELEVANT early
+    // return, so stale advice cannot survive an unchanged/marker-only build.
+    // It does not change which Maven lifecycle participants or tools run.
+    if(Boolean.getBoolean(M3WorkspaceDeltaBuildParticipant.ENABLE_PROPERTY)) {
+      projectFacade.setSessionProperty(M3WorkspaceDeltaBuildParticipant.PROPERTY, null);
+      if(kind == IncrementalProjectBuilder.FULL_BUILD || kind == IncrementalProjectBuilder.CLEAN_BUILD
+          || kind == IncrementalProjectBuilder.INCREMENTAL_BUILD || kind == IncrementalProjectBuilder.AUTO_BUILD) {
+        try {
+          projectFacade.setSessionProperty(M3WorkspaceDeltaBuildParticipant.PROPERTY,
+              M3WorkspaceDelta.capture(project, kind, delta, monitor));
+        } catch(CoreException | IllegalArgumentException e) {
+          // Evidence is optional. A failed capture cannot turn into a complete
+          // hint or change the original Maven build result.
+          log.debug("M3 workspace delta capture unavailable; original build remains authoritative", e);
+        }
+      }
+    }
+
     DeltaType deltaType = hasRelevantDelta(projectFacade, delta);
     if(deltaType == DeltaType.IRRELEVANT) {
       return Set.of(project);
