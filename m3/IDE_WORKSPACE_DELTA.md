@@ -5,11 +5,31 @@ This is an **additive**, opt-in m2e adapter. It captures Eclipse's original
 into `IMavenProjectFacade`'s **transient session properties** under
 `M3WorkspaceDeltaBuildParticipant.PROPERTY`.
 
+There are two **mutually exclusive** opt-in paths:
+
+- **Original m2e owner:** start Eclipse with JVM argument `-Dm3.ide.delta.capture=true`.
+  The existing `MavenBuilderImpl` records the original `IResourceDelta` before its
+  early return for irrelevant/marker-only changes. The switch is off by default.
+  Capture errors leave the transient property empty, never count as success,
+  and do not change the ordinary build's results or lifecycle scheduling.
+  PRECONFIGURE builds do not publish a misleading unknown build-kind packet.
+- **Existing lifecycle mapping provider:** explicitly register
+  `M3WorkspaceDeltaBuildParticipant`, as before. Leave the system switch off
+  when using this participant, to avoid duplicate capture in the same build.
+
+Both modes publish `M3WorkspaceDelta.Snapshot` to the same transient project
+session property. Consumers still must supply genuine build context and generation
+metadata and can only receive advisory changes. No source watcher, new javac task,
+Maven goal skip or persistent cache is introduced.
+
+A new PDE integration test in `ExtensionsTest` exercises the owner switch with a
+real m2e imported project and its original full build. Its Eclipse/Tycho execution
+is required before this optional mode can be declared qualified.
+
 The capture class does not depend on Maven 4, M3JDK21, an AST, or a second file
-watcher. It does not invoke Maven goals or JDT. Build participant registration is
-explicit and **not installed automatically**: existing lifecycle mapping providers
-can choose to instantiate `M3WorkspaceDeltaBuildParticipant` beside their original
-participants without replacing their original goal execution.
+watcher. It does not invoke Maven goals or JDT. Nothing is enabled by default:
+use the original-owner JVM switch or have a lifecycle mapping provider register
+`M3WorkspaceDeltaBuildParticipant` explicitly, without replacing existing goals.
 
 Consumers must bind project identity, Maven model, toolchain, dependencies,
 source-root digests, and monotonically increasing generation numbers from their

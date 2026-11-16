@@ -10,6 +10,7 @@
 package org.eclipse.m2e.core;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -27,6 +28,8 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.m2e.core.embedder.IComponentLookup;
 import org.eclipse.m2e.core.project.IMavenProjectFacade;
+import org.eclipse.m2e.core.project.configurator.M3WorkspaceDelta;
+import org.eclipse.m2e.core.project.configurator.M3WorkspaceDeltaBuildParticipant;
 import org.eclipse.m2e.core.project.ResolverConfiguration;
 import org.eclipse.m2e.tests.common.AbstractMavenProjectTestCase;
 import org.eclipse.m2e.tests.common.WorkspaceHelpers;
@@ -34,6 +37,29 @@ import org.junit.Assert;
 import org.junit.Test;
 
 public class ExtensionsTest extends AbstractMavenProjectTestCase {
+	@Test
+	public void testOptInM3WorkspaceDeltaInOriginalBuilder() throws Exception {
+		String key = M3WorkspaceDeltaBuildParticipant.ENABLE_PROPERTY;
+		String previous = System.getProperty(key);
+		try {
+			System.setProperty(key, "true");
+			IProject project = importProject("resources/projects/resourcesWithMVNFolder/pom.xml");
+			project.build(IncrementalProjectBuilder.FULL_BUILD, monitor);
+			IMavenProjectFacade facade = Adapters.adapt(project, IMavenProjectFacade.class);
+			assertNotNull(facade);
+			Object snapshot = facade.getSessionProperty(M3WorkspaceDeltaBuildParticipant.PROPERTY);
+			assertTrue("Original MavenBuilderImpl did not publish an opt-in workspace delta",
+					snapshot instanceof M3WorkspaceDelta.Snapshot);
+			assertFalse(((M3WorkspaceDelta.Snapshot) snapshot).authorizesMavenGoalSkipping());
+		} finally {
+			if(previous == null) {
+				System.clearProperty(key);
+			} else {
+				System.setProperty(key, previous);
+			}
+		}
+	}
+
 	@Test
 	public void testProjectExtensions() throws Exception {
 		IProject project = createExisting("projectExtension", "resources/projects/projectExtension/", false);

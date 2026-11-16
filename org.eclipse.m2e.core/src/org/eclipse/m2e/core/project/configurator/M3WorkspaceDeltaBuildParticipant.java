@@ -26,6 +26,9 @@ import org.eclipse.m2e.core.project.IMavenProjectFacade;
 public final class M3WorkspaceDeltaBuildParticipant extends AbstractBuildParticipant {
   public static final String PROPERTY = "org.eclipse.m2e.core.m3.workspaceDelta";
 
+  /** Original MavenBuilderImpl opt-in switch; off for existing workspaces. */
+  public static final String ENABLE_PROPERTY = "m3.ide.delta.capture";
+
   @Override
   public Set<IProject> build(int kind, IProgressMonitor monitor) throws Exception {
     IMavenProjectFacade facade = getMavenProjectFacade();
