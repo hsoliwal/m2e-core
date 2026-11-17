@@ -11,9 +11,13 @@
 
 package org.eclipse.m2e.codeclustering.internal;
 
+import java.io.File;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
+
+import org.eclipse.core.runtime.CoreException;
 
 
 /**
@@ -41,6 +45,33 @@ public final class ServerArtifacts {
   private static final Pattern VERSION = Pattern.compile("[A-Za-z0-9][A-Za-z0-9._+-]*"); //$NON-NLS-1$
 
   private ServerArtifacts() {
+  }
+
+  /** Resolves resolution roots to the files of the server class path. */
+  @FunctionalInterface
+  interface Resolver {
+    List<File> resolve(List<String> roots) throws CoreException;
+  }
+
+  /**
+   * Resolves {@link #coordinates(String, boolean)}. When the clang front end is asked for and that resolution fails,
+   * the failure goes to {@code clangMissing} and the roots are resolved again without {@link #CLANG_ARTIFACT_ID}, so
+   * the server still starts and atomizes C-family files with its lexical splitter.
+   *
+   * @throws CoreException if the roots without the clang front end cannot be resolved either
+   * @throws IllegalArgumentException if the preference is not a single Maven version
+   */
+  static List<File> resolve(String version, boolean clang, Resolver resolver, Consumer<CoreException> clangMissing)
+      throws CoreException {
+    try {
+      return resolver.resolve(coordinates(version, clang));
+    } catch(CoreException ex) {
+      if(!clang) {
+        throw ex;
+      }
+      clangMissing.accept(ex);
+      return resolver.resolve(coordinates(version, false));
+    }
   }
 
   /**

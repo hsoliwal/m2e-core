@@ -70,15 +70,26 @@ public class ClusteringConnectionProvider extends ProcessStreamConnectionProvide
       return options.classpath().stream().map(File::new).toList();
     }
     try {
-      return RESOLVER.resolve(ServerArtifacts.coordinates(options.version(), options.clang()),
-          new NullProgressMonitor());
+      return ServerArtifacts.resolve(options.version(), options.clang(),
+          roots -> RESOLVER.resolve(roots, new NullProgressMonitor()), ClusteringConnectionProvider::clangMissing);
     } catch(CoreException | IllegalArgumentException ex) {
-      String message = "The code-clustering language server is not started: " + ex.getMessage() //$NON-NLS-1$
-          + ". Install " + ServerArtifacts.SERVER_ARTIFACT_ID + " and " + ServerArtifacts.PLUGIN_ARTIFACT_ID //$NON-NLS-1$ //$NON-NLS-2$
-          + " into the local repository (mvn install), or set the server class path" //$NON-NLS-1$
-          + " in Preferences > Maven > Code Clustering."; //$NON-NLS-1$
-      log.error(message, ex);
-      throw new IOException(message, ex);
+      throw notStarted(ex);
     }
+  }
+
+  private static IOException notStarted(Exception ex) {
+    String message = "The code-clustering language server is not started: " + ex.getMessage() //$NON-NLS-1$
+        + ". Install " + ServerArtifacts.SERVER_ARTIFACT_ID + " and " + ServerArtifacts.PLUGIN_ARTIFACT_ID //$NON-NLS-1$ //$NON-NLS-2$
+        + " (and " + ServerArtifacts.CLANG_ARTIFACT_ID + " for the clang syntax tree)" //$NON-NLS-1$ //$NON-NLS-2$
+        + " into the local repository (mvn install), or set the server class path" //$NON-NLS-1$
+        + " in Preferences > Maven > Code Clustering."; //$NON-NLS-1$
+    log.error(message, ex);
+    return new IOException(message, ex);
+  }
+
+  private static void clangMissing(CoreException ex) {
+    log.warn("{} cannot be resolved: the server starts without it and atomizes C, C++ and Objective-C files" //$NON-NLS-1$
+        + " with its lexical splitter. Install it into the local repository (mvn install) to use clang. {}", //$NON-NLS-1$
+        ServerArtifacts.CLANG_ARTIFACT_ID, ex.getMessage());
   }
 }

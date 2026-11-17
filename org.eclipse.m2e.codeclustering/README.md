@@ -48,13 +48,13 @@ enabled and the file belongs to a project with the Maven nature.
 |------------|---------|---------|
 | Server version | `0.1.0-SNAPSHOT` | version of both artifacts |
 | Minimum atom size | 12 | sent as `minTokens` in the initialization options |
-| Language cores | empty | `clustering.lsp.profiles`: `jdt`, `cdt`, `pydev`, `wtp`, `rust` or `all`; each lets the matching language server (JDT LS, clangd, pylsp, LemMinX and the web servers, rust-analyzer) split files into atoms; empty uses the built-in front ends |
+| Language cores | empty | `clustering.lsp.profiles`: `jdt`, `cdt`, `pydev`, `wtp`, `rust`, `go`, `typescript`, `csharp`, `swift`, `groovy`, `kotlin`, `php`, `cobol`, `erlang` or `all`, and the aliases of the code-clustering-lsp README (`tools/code-clustering-lsp/README.md` in the Maven fork, which also lists each server); each lets the matching language server (JDT LS, clangd, pylsp, LemMinX and the web servers, rust-analyzer, gopls, typescript-language-server, csharp-ls, sourcekit-lsp, groovy-language-server, kotlin-language-server or kotlin-lsp, phpactor or intelephense, the Che4z COBOL server, ELP or erlang_ls) split files into atoms; empty uses the built-in front ends |
 | Explicit language servers | empty | `clustering.lsp.servers`, for example `c,h=clangd;rs=rust-analyzer` |
-| Clang syntax tree | off | resolves `maven-code-clustering-clang` with the server, so C, C++ and Objective-C files are atomized on clang's own tree (`clang -Xclang -ast-dump=json`, flags from the project's `compile_commands.json`, which the native build plugin publishes); files clang cannot read, and every C-family file when clang is not installed, use the built-in lexical front end |
+| Clang syntax tree | off | resolves `maven-code-clustering-clang` with the server, so C, C++ and Objective-C files are atomized on clang's own tree (`clang -Xclang -ast-dump=json`, flags from the project's `compile_commands.json`, which the native build plugin publishes); files clang cannot read, and every C-family file when clang is not installed, use the built-in lexical front end; when `maven-code-clustering-clang` cannot be resolved, the server starts without it (lexical front end) and logs a warning that names it; with an explicit Server class path nothing is resolved, so this setting adds no jar: put `maven-code-clustering-clang` on that class path yourself |
 | Clang executable | empty | `clustering.clang.executable`; empty finds `clang` on PATH or in the LLVM folders |
 | Java | empty | a `java` executable or a JDK directory |
 | JVM arguments | empty | extra arguments of the server's JVM |
-| Server class path | empty | explicit jars; when set, nothing is resolved |
+| Server class path | empty | explicit jars; when set, nothing is resolved (the Clang syntax tree setting adds no jar) |
 
 Changes apply when the server starts next.
 
@@ -67,5 +67,5 @@ command-line build, and the language server shows the same results in the editor
 ## Validation
 
 `org.eclipse.m2e.codeclustering.tests` checks the version preference, the option parsing (clang included), the
-command line, the workspace folder selection, and the language server contribution in
+fallback without the clang artifact, the preference-page mnemonics, the command line, the workspace folder selection, and the language server contribution in
 plugin.xml. These tests need no running workbench.
