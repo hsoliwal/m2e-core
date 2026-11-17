@@ -35,6 +35,10 @@ public class Messages extends NLS {
 
   public static String ClusteringPreferencePage_classpath;
 
+  public static String ClusteringPreferencePage_clang;
+
+  public static String ClusteringPreferencePage_clangExecutable;
+
   static {
     NLS.initializeMessages(BUNDLE_NAME, Messages.class);
   }

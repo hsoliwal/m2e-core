@@ -53,6 +53,18 @@ public class ServerOptionsTest {
   }
 
   @Test
+  public void testClangPreferences() {
+    ServerOptions missing = ServerOptions.read(key -> null);
+    assertEquals(false, missing.clang());
+    assertEquals("", missing.clangExecutable());
+    Map<String, String> preferences = Map.of(ServerOptions.CLANG, "true", ServerOptions.CLANG_EXECUTABLE, " /usr/bin/clang ");
+    ServerOptions options = ServerOptions.read(preferences::get);
+    assertEquals(true, options.clang());
+    assertEquals("/usr/bin/clang", options.clangExecutable());
+    assertEquals(false, new ServerOptions("", "", List.of(), 12, "", "", List.of()).clang());
+  }
+
+  @Test
   public void testMinTokensBelowOneOrNotANumberGiveDefault() {
     assertEquals(7, ServerOptions.minTokens(" 7 "));
     assertEquals(1, ServerOptions.minTokens("1"));

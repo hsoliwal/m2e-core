@@ -54,6 +54,19 @@ public class ServerCommandLineTest {
   }
 
   @Test
+  public void testClangExecutableIsPassedOnlyWithTheClangFrontEnd() {
+    List<File> classpath = List.of(new File("server.jar"));
+    ServerOptions on = new ServerOptions("", "", List.of(), 12, "", "", List.of(), true, " C:/LLVM/bin/clang.exe ");
+    List<String> command = ServerCommandLine.build(on, "java", classpath);
+    assertEquals("-Dclustering.clang.executable=C:/LLVM/bin/clang.exe", command.get(1));
+    assertEquals(ServerArtifacts.MAIN_CLASS, command.get(command.size() - 1));
+    ServerOptions off = new ServerOptions("", "", List.of(), 12, "", "", List.of(), false, "C:/LLVM/bin/clang.exe");
+    assertEquals(4, ServerCommandLine.build(off, "java", classpath).size());
+    ServerOptions onPath = new ServerOptions("", "", List.of(), 12, "", "", List.of(), true, "");
+    assertEquals(4, ServerCommandLine.build(onPath, "java", classpath).size());
+  }
+
+  @Test
   public void testClassPathKeepsFirstOccurrence() {
     File a = new File("a.jar");
     File b = new File("b.jar");

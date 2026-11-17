@@ -30,9 +30,13 @@ import java.util.function.UnaryOperator;
  *          built-in front ends
  * @param servers the server's {@code clustering.lsp.servers}: explicit extension to command mappings; empty for none
  * @param classpath an explicit server class path; when it is not empty, nothing is resolved
+ * @param clang whether C, C++ and Objective-C files are atomized on clang's syntax tree: the artifact
+ *          {@code maven-code-clustering-clang} joins the server class path (clang and a compile_commands.json are
+ *          needed)
+ * @param clangExecutable the clang to run; empty for {@code clang} on PATH or in the LLVM folders
  */
 public record ServerOptions(String version, String javaExecutable, List<String> vmArguments, int minTokens,
-    String profiles, String servers, List<String> classpath) {
+    String profiles, String servers, List<String> classpath, boolean clang, String clangExecutable) {
 
   public static final String ENABLED = "enabled"; //$NON-NLS-1$
 
@@ -50,11 +54,22 @@ public record ServerOptions(String version, String javaExecutable, List<String> 
 
   public static final String CLASSPATH = "classpath"; //$NON-NLS-1$
 
+  public static final String CLANG = "clang"; //$NON-NLS-1$
+
+  public static final String CLANG_EXECUTABLE = "clangExecutable"; //$NON-NLS-1$
+
   public static final int DEFAULT_MIN_TOKENS = 12;
 
   public ServerOptions {
     vmArguments = List.copyOf(vmArguments);
     classpath = List.copyOf(classpath);
+    clangExecutable = clangExecutable == null ? "" : clangExecutable.strip(); //$NON-NLS-1$
+  }
+
+  /** Settings without the clang front end. */
+  public ServerOptions(String version, String javaExecutable, List<String> vmArguments, int minTokens, String profiles,
+      String servers, List<String> classpath) {
+    this(version, javaExecutable, vmArguments, minTokens, profiles, servers, classpath, false, ""); //$NON-NLS-1$
   }
 
   /**
@@ -63,7 +78,8 @@ public record ServerOptions(String version, String javaExecutable, List<String> 
   public static ServerOptions read(UnaryOperator<String> preferences) {
     return new ServerOptions(text(preferences, VERSION), text(preferences, JAVA),
         arguments(text(preferences, VM_ARGUMENTS)), minTokens(text(preferences, MIN_TOKENS)),
-        text(preferences, PROFILES), text(preferences, SERVERS), paths(text(preferences, CLASSPATH)));
+        text(preferences, PROFILES), text(preferences, SERVERS), paths(text(preferences, CLASSPATH)),
+        Boolean.parseBoolean(text(preferences, CLANG)), text(preferences, CLANG_EXECUTABLE));
   }
 
   /**

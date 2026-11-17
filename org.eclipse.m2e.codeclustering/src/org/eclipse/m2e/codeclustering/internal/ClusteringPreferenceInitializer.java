@@ -18,7 +18,8 @@ import org.eclipse.core.runtime.preferences.IEclipsePreferences;
 
 /**
  * Default preferences: the server is off, version {@link ServerArtifacts#DEFAULT_VERSION}, the server's default
- * {@code minTokens}, the built-in front ends, the Java that runs Eclipse, and a resolved class path.
+ * {@code minTokens}, the built-in front ends, the Java that runs Eclipse, a resolved class path, and no clang front
+ * end.
  */
 public class ClusteringPreferenceInitializer extends AbstractPreferenceInitializer {
 
@@ -33,5 +34,7 @@ public class ClusteringPreferenceInitializer extends AbstractPreferenceInitializ
     defaults.put(ServerOptions.JAVA, ""); //$NON-NLS-1$
     defaults.put(ServerOptions.VM_ARGUMENTS, ""); //$NON-NLS-1$
     defaults.put(ServerOptions.CLASSPATH, ""); //$NON-NLS-1$
+    defaults.putBoolean(ServerOptions.CLANG, false);
+    defaults.put(ServerOptions.CLANG_EXECUTABLE, ""); //$NON-NLS-1$
   }
 }

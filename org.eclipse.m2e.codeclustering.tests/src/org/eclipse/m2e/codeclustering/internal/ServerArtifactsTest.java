@@ -50,6 +50,15 @@ public class ServerArtifactsTest {
   }
 
   @Test
+  public void testClangFrontEndJoinsTheResolutionRoots() {
+    assertEquals(ServerArtifacts.coordinates("0.3.1"), ServerArtifacts.coordinates("0.3.1", false));
+    assertEquals(List.of("org.apache.maven.plugins:maven-code-clustering-lsp:jar:0.3.1",
+        "org.apache.maven.plugins:maven-code-clustering-plugin:jar:0.3.1",
+        "org.apache.maven.plugins:maven-code-clustering-clang:jar:0.3.1"), ServerArtifacts.coordinates("0.3.1", true));
+    assertThrows(IllegalArgumentException.class, () -> ServerArtifacts.coordinates("[0.1,)", true));
+  }
+
+  @Test
   public void testCoordinatesRejectInvalidVersion() {
     assertThrows(IllegalArgumentException.class, () -> ServerArtifacts.coordinates("[0.1,)"));
   }
