@@ -19,8 +19,18 @@
             id="org.eclipse.m2e.polyglot.configurator"
             name="Language servers for polyglot Maven projects">
       </configurator>
+      <!-- Secondary to the Groovy-Eclipse and Kotlin for Eclipse configurators when they map the same execution. -->
+      <configurator
+            class="org.eclipse.m2e.polyglot.PolyglotProjectConfigurator"
+            id="org.eclipse.m2e.polyglot.languagePlugins"
+            name="Language servers for Groovy and Kotlin Maven projects"
+            runsAfter="org.codehaus.groovy.m2eclipse.configurator?,org.jetbrains.kotlin.maven.projectConfigurator?">
+      </configurator>
    </extension>
-   <!-- Low priority: content types of installed IDEs (CDT, Corrosion, Wild Web Developer) win. -->
+   <extension
+         point="org.eclipse.m2e.core.lifecycleMappingMetadataSource">
+   </extension>
+   <!-- Low priority: content types of installed IDEs (CDT, Corrosion, Wild Web Developer, Groovy-Eclipse, PDT) win. -->
    <extension
          point="org.eclipse.core.contenttype.contentTypes">
       <content-type id="org.eclipse.m2e.polyglot.rust" name="Rust (polyglot)"
@@ -41,6 +51,16 @@
             base-type="org.eclipse.core.runtime.text" file-extensions="cs" priority="low"/>
       <content-type id="org.eclipse.m2e.polyglot.swift" name="Swift (polyglot)"
             base-type="org.eclipse.core.runtime.text" file-extensions="swift" priority="low"/>
+      <content-type id="org.eclipse.m2e.polyglot.groovy" name="Groovy (polyglot)"
+            base-type="org.eclipse.core.runtime.text" file-extensions="groovy,gvy,gy,gsh" priority="low"/>
+      <content-type id="org.eclipse.m2e.polyglot.kotlin" name="Kotlin (polyglot)"
+            base-type="org.eclipse.core.runtime.text" file-extensions="kt,kts" priority="low"/>
+      <content-type id="org.eclipse.m2e.polyglot.php" name="PHP (polyglot)"
+            base-type="org.eclipse.core.runtime.text" file-extensions="php,phtml" priority="low"/>
+      <content-type id="org.eclipse.m2e.polyglot.cobol" name="COBOL (polyglot)"
+            base-type="org.eclipse.core.runtime.text" file-extensions="cbl,cob,cpy,cobol" priority="low"/>
+      <content-type id="org.eclipse.m2e.polyglot.erlang" name="Erlang (polyglot)"
+            base-type="org.eclipse.core.runtime.text" file-extensions="erl,hrl" priority="low"/>
    </extension>
    <extension
          point="org.eclipse.ui.editors">
@@ -53,5 +73,10 @@
       <editorContentTypeBinding contentTypeId="org.eclipse.m2e.polyglot.python" editorId="org.eclipse.ui.genericeditor.GenericEditor"/>
       <editorContentTypeBinding contentTypeId="org.eclipse.m2e.polyglot.csharp" editorId="org.eclipse.ui.genericeditor.GenericEditor"/>
       <editorContentTypeBinding contentTypeId="org.eclipse.m2e.polyglot.swift" editorId="org.eclipse.ui.genericeditor.GenericEditor"/>
+      <editorContentTypeBinding contentTypeId="org.eclipse.m2e.polyglot.groovy" editorId="org.eclipse.ui.genericeditor.GenericEditor"/>
+      <editorContentTypeBinding contentTypeId="org.eclipse.m2e.polyglot.kotlin" editorId="org.eclipse.ui.genericeditor.GenericEditor"/>
+      <editorContentTypeBinding contentTypeId="org.eclipse.m2e.polyglot.php" editorId="org.eclipse.ui.genericeditor.GenericEditor"/>
+      <editorContentTypeBinding contentTypeId="org.eclipse.m2e.polyglot.cobol" editorId="org.eclipse.ui.genericeditor.GenericEditor"/>
+      <editorContentTypeBinding contentTypeId="org.eclipse.m2e.polyglot.erlang" editorId="org.eclipse.ui.genericeditor.GenericEditor"/>
    </extension>
 </plugin>

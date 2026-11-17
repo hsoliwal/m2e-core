@@ -15,7 +15,24 @@ tool	python3	python
 tool	pytest	python
 tool	dotnet	csharp
 tool	swift	swift
-# server	<language>	<sample file>	<command>	<argument>...
+tool	xmllint	xml
+tool	xsltproc	xml
+tool	groovy	groovy
+tool	groovyc	groovy
+tool	kotlin	kotlin
+tool	kotlinc	kotlin
+tool	php	php
+tool	composer	php
+tool	phpunit	php
+tool	cobc	cobol
+tool	erl	erlang
+tool	erlc	erlang
+tool	escript	erlang
+tool	rebar3	erlang
+# plugin	<groupId>:<artifactId>	<language>...	(Maven plug-ins mapped to org.eclipse.m2e.polyglot.languagePlugins)
+plugin	org.codehaus.gmavenplus:gmavenplus-plugin	groovy
+plugin	org.jetbrains.kotlin:kotlin-maven-plugin	kotlin
+# server	<language>	<sample file>	<command>	<argument>...	(several rows: alternatives, the first on PATH wins)
 server	rust	file.rs	rust-analyzer
 server	go	file.go	gopls
 server	c	file.c	clangd
@@ -25,3 +42,14 @@ server	typescript	file.ts	typescript-language-server	--stdio
 server	python	file.py	pylsp
 server	csharp	file.cs	csharp-ls
 server	swift	file.swift	sourcekit-lsp
+server	xml	file.xml	lemminx
+server	groovy	file.groovy	groovy-language-server
+server	kotlin	file.kt	kotlin-language-server
+server	kotlin	file.kt	kotlin-lsp	--stdio
+server	php	file.php	phpactor	language-server
+server	php	file.php	intelephense	--stdio
+server	cobol	file.cbl	cobol-language-support
+server	erlang	file.erl	elp	server
+server	erlang	file.erl	erlang_ls
+# yield	<language>...	(bound only to this bundle's own content type: an IDE plug-in that claims the files keeps them)
+yield	groovy	kotlin	php	cobol	erlang
