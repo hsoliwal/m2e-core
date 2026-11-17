@@ -63,7 +63,7 @@ final class LanguageServerBinder {
 		if (contentType == null) {
 			return BindOutcome.NO_CONTENT_TYPE;
 		}
-		if (served(contentType)) {
+		if (served(binding.sampleFile())) {
 			return BindOutcome.ALREADY_SERVED;
 		}
 		if (binding.yieldsToPlugins() && !contentType.getId().startsWith(OWN_CONTENT_TYPES)) {
@@ -71,6 +71,17 @@ final class LanguageServerBinder {
 		}
 		Optional<Located> located = locate(binding, locator);
 		return located.isEmpty() ? BindOutcome.NOT_ON_PATH : register(contentType, located.get());
+	}
+
+	/**
+	 * True when an LSP4E server serves any content type a file of this name has, not only the one Eclipse picks
+	 * first. LSP4E starts the servers of all of them; Corrosion maps rust-analyzer to TM4E's Rust content type, which
+	 * has the same low priority as this bundle's and loses the tie on its id, so checking only the first one would bind
+	 * a second rust-analyzer next to Corrosion's.
+	 */
+	static boolean served(String fileName) {
+		return Stream.of(Platform.getContentTypeManager().findContentTypesFor(fileName))
+				.anyMatch(LanguageServerBinder::served);
 	}
 
 	/** True when an LSP4E server, from a launch configuration or a plug-in, serves exactly this content type. */

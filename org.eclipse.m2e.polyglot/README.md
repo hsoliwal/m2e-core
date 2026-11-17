@@ -45,7 +45,9 @@ mapping would override.
 ## What happens on import or *Maven > Update Project*
 
 1. The configurator collects the languages of its executions: the tools of every `task` row of
-   each mapped task manifest, and the languages of each mapped language plug-in.
+   each mapped task manifest, and the languages of each mapped language plug-in. A tool provider
+   task (`@m3:<provider>:<capability>:<language>`, such as the Mavenizer's
+   `@m3:cargo:interpreter:rust` test task) counts as its provider (`cargo`).
 2. `language-servers.tsv` maps each tool and plug-in to its languages, and each language to a
    sample file name and one or more language server commands, in order of preference:
 
@@ -69,7 +71,8 @@ mapping would override.
    preferred; intelephense is closed source with a free tier, and is used only when it is the
    one installed.
 3. For each language, the configurator asks Eclipse which content type a file with the
-   sample name has. It acts only when no LSP4E server serves that content type yet and one of the
+   sample name has. It acts only when no LSP4E server serves any content type of such a file yet
+   (LSP4E starts the servers of all of them), and one of the
    server commands is on `PATH`. It then creates an *External Tools* program launch
    configuration named `Language server: <command>` for the first command found, and registers
    it with LSP4E for that content type. This is the same association LSP4E's *Language Servers*
@@ -80,6 +83,13 @@ mapping would override.
 - An installed IDE wins: CDT with cdt-lsp, Corrosion, Wild Web Developer and other plug-ins
   keep their own content types and LSP4E servers. This bundle's content types have low priority,
   and the configurator never replaces an existing association.
+- Corrosion binds its rust-analyzer to TM4E's Rust content type. That type also has low
+  priority and loses the tie to `org.eclipse.m2e.polyglot.rust` on its id, so Eclipse picks this
+  bundle's type first. The configurator still sees Corrosion's server (it checks every content
+  type of `file.rs`) and adds no second rust-analyzer. Corrosion recognises a Cargo project by its
+  `Cargo.toml` (no project nature), so a mavenized crate gets its Cargo commands as it is.
+- cdt-lsp's clangd finds a mavenized CMake build's compile database through the `.clangd` file
+  the Mavenizer writes (`CompilationDatabase: build/cmake`); cdt-lsp reads and writes the same key.
 - Groovy, Kotlin, PHP, COBOL and Erlang *yield* to plug-ins: their server is bound only to this
   bundle's own content type. When Groovy-Eclipse, Kotlin for Eclipse, PDT, Erlide or another
   plug-in claims the files, it keeps them, even without LSP4E (outcome `IDE_PLUGIN`).

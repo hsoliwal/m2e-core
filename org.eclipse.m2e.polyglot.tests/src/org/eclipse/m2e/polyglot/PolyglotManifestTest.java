@@ -68,6 +68,17 @@ public class PolyglotManifestTest {
 	}
 
 	@Test
+	public void aToolProviderTaskNamesItsProvider() throws IOException {
+		assertEquals("cargo", PolyglotManifest.toolName("@m3:cargo:interpreter:rust"));
+		assertEquals("jdk", PolyglotManifest.toolName("@m3:JDK:compiler:java"));
+		assertEquals("@m3:cargo", PolyglotManifest.toolName("@m3:cargo"));
+		assertEquals(Set.of("cargo"), PolyglotManifest.tools(List.of(PolyglotManifest.MAGIC,
+				"task\tcargo-compile\tcargo\t.", "task\tcargo-test\t@m3:cargo:interpreter:rust\t.")));
+		assertEquals(Set.of("cargo"), PolyglotManifest.tools(List.of(PolyglotManifest.MAGIC,
+				"task\tcargo-test\t@m3:cargo:interpreter:rust\t.")));
+	}
+
+	@Test
 	public void aMissingFileHasNoToolsAndAFileIsRead() throws IOException {
 		Path folder = Files.createTempDirectory("polyglot-manifest");
 		try {
