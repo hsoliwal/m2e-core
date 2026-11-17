@@ -212,6 +212,38 @@
         <ignore />
       </action>
     </pluginExecution>
+    <pluginExecution>
+      <!-- ignore, not execute: cluster and compare only write reports under target/code-clustering (compare can
+           fail the build), and the org.eclipse.m2e.codeclustering language server reports the same duplicates
+           live in the editors, so running them on every incremental build would scan the sources twice -->
+      <pluginExecutionFilter>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-code-clustering-plugin</artifactId>
+        <versionRange>[0,)</versionRange>
+        <goals>
+          <goal>cluster</goal>
+          <goal>compare</goal>
+        </goals>
+      </pluginExecutionFilter>
+      <action>
+        <ignore />
+      </action>
+    </pluginExecution>
+    <pluginExecution>
+      <!-- ignore, not execute: snapshot rewrites the baseline .code-clustering/ATOM_HASHES.tsv in the source tree,
+           which must only change when a user runs it on purpose from the command line -->
+      <pluginExecutionFilter>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-code-clustering-plugin</artifactId>
+        <versionRange>[0,)</versionRange>
+        <goals>
+          <goal>snapshot</goal>
+        </goals>
+      </pluginExecutionFilter>
+      <action>
+        <ignore />
+      </action>
+    </pluginExecution>
 
     <!-- commonly used codehaus plugins -->
     <pluginExecution>

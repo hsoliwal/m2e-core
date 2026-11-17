@@ -1,0 +1,10 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: M2E Code Clustering Language Server Tests
+Bundle-SymbolicName: org.eclipse.m2e.codeclustering.tests
+Bundle-Version: 3.0.0.qualifier
+Bundle-Vendor: Eclipse.org - m2e
+Fragment-Host: org.eclipse.m2e.codeclustering
+Require-Bundle: org.junit
+Automatic-Module-Name: org.eclipse.m2e.codeclustering.tests
+Bundle-RequiredExecutionEnvironment: JavaSE-21

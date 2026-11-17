@@ -1,0 +1,297 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<!--
+  Copyright (c) 2026 Contributors to the Eclipse Foundation
+
+  This program and the accompanying materials
+  are made available under the terms of the Eclipse Public License 2.0
+  which accompanies this distribution, and is available at
+  https://www.eclipse.org/legal/epl-2.0/
+
+  SPDX-License-Identifier: EPL-2.0
+-->
+<plugin>
+   <!--
+      One code clustering server for the workspace (singleton). Its client announces the open Maven projects as
+      workspace folders, and the server reports duplicated code in their files as diagnostics. A mapping whose content
+      type is not installed (no CDT, PyDev, WTP, Wild Web Developer, Corrosion or RustDT) is skipped by LSP4E. Each
+      mapping applies only when the server is enabled in the preferences and the file belongs to a Maven project.
+   -->
+   <extension
+         point="org.eclipse.lsp4e.languageServer">
+      <server
+            id="org.eclipse.m2e.codeclustering.server"
+            label="%server.label"
+            class="org.eclipse.m2e.codeclustering.internal.ClusteringConnectionProvider"
+            clientImpl="org.eclipse.m2e.codeclustering.internal.MavenProjectsLanguageClient"
+            singleton="true"
+            markerType="org.eclipse.m2e.codeclustering.duplicate"
+            lastDocumentDisconnectedTimeout="30">
+      </server>
+      <!-- JDT: https://github.com/eclipse-jdt/eclipse.jdt.core/blob/dd2c87485ce2f01b4fc88167f1db701dd6540b35/org.eclipse.jdt.core/plugin.xml -->
+      <contentTypeMapping
+            id="org.eclipse.m2e.codeclustering.server"
+            contentType="org.eclipse.jdt.core.javaSource"
+            languageId="java">
+         <enabledWhen description="%enabledWhen.description">
+            <reference definitionId="org.eclipse.m2e.codeclustering.mavenProjectFile"/>
+         </enabledWhen>
+      </contentTypeMapping>
+      <!-- CDT: https://github.com/eclipse-cdt/cdt/blob/52a6b1f174c3169b9c1f1db770eb76249f723392/core/org.eclipse.cdt.core/plugin.xml -->
+      <contentTypeMapping
+            id="org.eclipse.m2e.codeclustering.server"
+            contentType="org.eclipse.cdt.core.cSource"
+            languageId="c">
+         <enabledWhen description="%enabledWhen.description">
+            <reference definitionId="org.eclipse.m2e.codeclustering.mavenProjectFile"/>
+         </enabledWhen>
+      </contentTypeMapping>
+      <contentTypeMapping
+            id="org.eclipse.m2e.codeclustering.server"
+            contentType="org.eclipse.cdt.core.cHeader"
+            languageId="c">
+         <enabledWhen description="%enabledWhen.description">
+            <reference definitionId="org.eclipse.m2e.codeclustering.mavenProjectFile"/>
+         </enabledWhen>
+      </contentTypeMapping>
+      <contentTypeMapping
+            id="org.eclipse.m2e.codeclustering.server"
+            contentType="org.eclipse.cdt.core.cxxSource"
+            languageId="cpp">
+         <enabledWhen description="%enabledWhen.description">
+            <reference definitionId="org.eclipse.m2e.codeclustering.mavenProjectFile"/>
+         </enabledWhen>
+      </contentTypeMapping>
+      <contentTypeMapping
+            id="org.eclipse.m2e.codeclustering.server"
+            contentType="org.eclipse.cdt.core.cxxHeader"
+            languageId="cpp">
+         <enabledWhen description="%enabledWhen.description">
+            <reference definitionId="org.eclipse.m2e.codeclustering.mavenProjectFile"/>
+         </enabledWhen>
+      </contentTypeMapping>
+      <!-- PyDev: https://github.com/fabioz/Pydev/blob/3a91ff856423090cfc5ffa9420becf4c9107398f/plugins/org.python.pydev/plugin.xml -->
+      <contentTypeMapping
+            id="org.eclipse.m2e.codeclustering.server"
+            contentType="org.python.pydev.pythonfile"
+            languageId="python">
+         <enabledWhen description="%enabledWhen.description">
+            <reference definitionId="org.eclipse.m2e.codeclustering.mavenProjectFile"/>
+         </enabledWhen>
+      </contentTypeMapping>
+      <!-- Platform XML (Wild Web Developer/LemMinX): https://github.com/eclipse-platform/eclipse.platform/blob/30dafa8d50918869baccfa02576ed41997dbfb3b/runtime/bundles/org.eclipse.core.contenttype/plugin.xml -->
+      <contentTypeMapping
+            id="org.eclipse.m2e.codeclustering.server"
+            contentType="org.eclipse.core.runtime.xml"
+            languageId="xml">
+         <enabledWhen description="%enabledWhen.description">
+            <reference definitionId="org.eclipse.m2e.codeclustering.mavenProjectFile"/>
+         </enabledWhen>
+      </contentTypeMapping>
+      <!-- WTP XML: https://github.com/eclipse-sourceediting/sourceediting/blob/22b6a36e7305572f9813de99fec4a09964b35dc9/xml/bundles/org.eclipse.wst.xml.core/plugin.xml -->
+      <contentTypeMapping
+            id="org.eclipse.m2e.codeclustering.server"
+            contentType="org.eclipse.wst.xml.core.xmlsource"
+            languageId="xml">
+         <enabledWhen description="%enabledWhen.description">
+            <reference definitionId="org.eclipse.m2e.codeclustering.mavenProjectFile"/>
+         </enabledWhen>
+      </contentTypeMapping>
+      <!-- WTP HTML: https://github.com/eclipse-sourceediting/sourceediting/blob/22b6a36e7305572f9813de99fec4a09964b35dc9/web/bundles/org.eclipse.wst.html.core/plugin.xml -->
+      <contentTypeMapping
+            id="org.eclipse.m2e.codeclustering.server"
+            contentType="org.eclipse.wst.html.core.htmlsource"
+            languageId="html">
+         <enabledWhen description="%enabledWhen.description">
+            <reference definitionId="org.eclipse.m2e.codeclustering.mavenProjectFile"/>
+         </enabledWhen>
+      </contentTypeMapping>
+      <!-- WTP CSS: https://github.com/eclipse-sourceediting/sourceediting/blob/22b6a36e7305572f9813de99fec4a09964b35dc9/web/bundles/org.eclipse.wst.css.core/plugin.xml -->
+      <contentTypeMapping
+            id="org.eclipse.m2e.codeclustering.server"
+            contentType="org.eclipse.wst.css.core.csssource"
+            languageId="css">
+         <enabledWhen description="%enabledWhen.description">
+            <reference definitionId="org.eclipse.m2e.codeclustering.mavenProjectFile"/>
+         </enabledWhen>
+      </contentTypeMapping>
+      <!-- WTP JSON: https://github.com/eclipse-sourceediting/sourceediting/blob/22b6a36e7305572f9813de99fec4a09964b35dc9/json/bundles/org.eclipse.wst.json.core/plugin.xml -->
+      <contentTypeMapping
+            id="org.eclipse.m2e.codeclustering.server"
+            contentType="org.eclipse.wst.json.core.jsonsource"
+            languageId="json">
+         <enabledWhen description="%enabledWhen.description">
+            <reference definitionId="org.eclipse.m2e.codeclustering.mavenProjectFile"/>
+         </enabledWhen>
+      </contentTypeMapping>
+      <!-- WTP JSDT JavaScript: https://github.com/eclipse-jsdt/webtools.jsdt/blob/bb1803043b45fa33ad8eecc4d4e398275037aa64/bundles/org.eclipse.wst.jsdt.core/plugin.xml -->
+      <contentTypeMapping
+            id="org.eclipse.m2e.codeclustering.server"
+            contentType="org.eclipse.wst.jsdt.core.jsSource"
+            languageId="javascript">
+         <enabledWhen description="%enabledWhen.description">
+            <reference definitionId="org.eclipse.m2e.codeclustering.mavenProjectFile"/>
+         </enabledWhen>
+      </contentTypeMapping>
+      <!-- Wild Web Developer HTML (TM4E): https://github.com/eclipse-tm4e/tm4e/blob/c46afcd027fdc390278a9915abe10ff631dd9a47/org.eclipse.tm4e.language_pack/plugin.xml -->
+      <contentTypeMapping
+            id="org.eclipse.m2e.codeclustering.server"
+            contentType="org.eclipse.tm4e.language_pack.html"
+            languageId="html">
+         <enabledWhen description="%enabledWhen.description">
+            <reference definitionId="org.eclipse.m2e.codeclustering.mavenProjectFile"/>
+         </enabledWhen>
+      </contentTypeMapping>
+      <!-- Wild Web Developer CSS (TM4E): https://github.com/eclipse-tm4e/tm4e/blob/c46afcd027fdc390278a9915abe10ff631dd9a47/org.eclipse.tm4e.language_pack/plugin.xml -->
+      <contentTypeMapping
+            id="org.eclipse.m2e.codeclustering.server"
+            contentType="org.eclipse.tm4e.language_pack.css"
+            languageId="css">
+         <enabledWhen description="%enabledWhen.description">
+            <reference definitionId="org.eclipse.m2e.codeclustering.mavenProjectFile"/>
+         </enabledWhen>
+      </contentTypeMapping>
+      <!-- Wild Web Developer JSON (TM4E): https://github.com/eclipse-tm4e/tm4e/blob/c46afcd027fdc390278a9915abe10ff631dd9a47/org.eclipse.tm4e.language_pack/plugin.xml -->
+      <contentTypeMapping
+            id="org.eclipse.m2e.codeclustering.server"
+            contentType="org.eclipse.tm4e.language_pack.json"
+            languageId="json">
+         <enabledWhen description="%enabledWhen.description">
+            <reference definitionId="org.eclipse.m2e.codeclustering.mavenProjectFile"/>
+         </enabledWhen>
+      </contentTypeMapping>
+      <!-- Wild Web Developer JSON: https://github.com/eclipse-wildwebdeveloper/wildwebdeveloper/blob/9350f71cb63b39c34ed49b84d05fb733122fe09b/org.eclipse.wildwebdeveloper/plugin.xml -->
+      <contentTypeMapping
+            id="org.eclipse.m2e.codeclustering.server"
+            contentType="org.eclipse.wildwebdeveloper.json"
+            languageId="json">
+         <enabledWhen description="%enabledWhen.description">
+            <reference definitionId="org.eclipse.m2e.codeclustering.mavenProjectFile"/>
+         </enabledWhen>
+      </contentTypeMapping>
+      <!-- Wild Web Developer JavaScript (TM4E): https://github.com/eclipse-tm4e/tm4e/blob/c46afcd027fdc390278a9915abe10ff631dd9a47/org.eclipse.tm4e.language_pack/plugin.xml -->
+      <contentTypeMapping
+            id="org.eclipse.m2e.codeclustering.server"
+            contentType="org.eclipse.tm4e.language_pack.javascript"
+            languageId="javascript">
+         <enabledWhen description="%enabledWhen.description">
+            <reference definitionId="org.eclipse.m2e.codeclustering.mavenProjectFile"/>
+         </enabledWhen>
+      </contentTypeMapping>
+      <!-- Wild Web Developer JSX (TM4E): https://github.com/eclipse-tm4e/tm4e/blob/c46afcd027fdc390278a9915abe10ff631dd9a47/org.eclipse.tm4e.language_pack/plugin.xml -->
+      <contentTypeMapping
+            id="org.eclipse.m2e.codeclustering.server"
+            contentType="org.eclipse.tm4e.language_pack.javascriptreact"
+            languageId="javascriptreact">
+         <enabledWhen description="%enabledWhen.description">
+            <reference definitionId="org.eclipse.m2e.codeclustering.mavenProjectFile"/>
+         </enabledWhen>
+      </contentTypeMapping>
+      <!-- Wild Web Developer TypeScript (TM4E): https://github.com/eclipse-tm4e/tm4e/blob/c46afcd027fdc390278a9915abe10ff631dd9a47/org.eclipse.tm4e.language_pack/plugin.xml -->
+      <contentTypeMapping
+            id="org.eclipse.m2e.codeclustering.server"
+            contentType="org.eclipse.tm4e.language_pack.typescript"
+            languageId="typescript">
+         <enabledWhen description="%enabledWhen.description">
+            <reference definitionId="org.eclipse.m2e.codeclustering.mavenProjectFile"/>
+         </enabledWhen>
+      </contentTypeMapping>
+      <!-- Wild Web Developer TSX (TM4E): https://github.com/eclipse-tm4e/tm4e/blob/c46afcd027fdc390278a9915abe10ff631dd9a47/org.eclipse.tm4e.language_pack/plugin.xml -->
+      <contentTypeMapping
+            id="org.eclipse.m2e.codeclustering.server"
+            contentType="org.eclipse.tm4e.language_pack.typescriptreact"
+            languageId="typescriptreact">
+         <enabledWhen description="%enabledWhen.description">
+            <reference definitionId="org.eclipse.m2e.codeclustering.mavenProjectFile"/>
+         </enabledWhen>
+      </contentTypeMapping>
+      <!-- Corrosion Rust (TM4E): https://github.com/eclipse-tm4e/tm4e/blob/c46afcd027fdc390278a9915abe10ff631dd9a47/org.eclipse.tm4e.language_pack/plugin.xml -->
+      <contentTypeMapping
+            id="org.eclipse.m2e.codeclustering.server"
+            contentType="org.eclipse.tm4e.language_pack.rust"
+            languageId="rust">
+         <enabledWhen description="%enabledWhen.description">
+            <reference definitionId="org.eclipse.m2e.codeclustering.mavenProjectFile"/>
+         </enabledWhen>
+      </contentTypeMapping>
+      <!-- RustDT Rust (archived): https://github.com/RustDT/RustDT/blob/62179ea8443fc0692b70fb678ea5e5d575be1dc1/plugin_ide.core/plugin.xml -->
+      <contentTypeMapping
+            id="org.eclipse.m2e.codeclustering.server"
+            contentType="com.github.rustdt.ide.core.content.source"
+            languageId="rust">
+         <enabledWhen description="%enabledWhen.description">
+            <reference definitionId="org.eclipse.m2e.codeclustering.mavenProjectFile"/>
+         </enabledWhen>
+      </contentTypeMapping>
+   </extension>
+
+   <extension
+         point="org.eclipse.core.expressions.definitions">
+      <definition
+            id="org.eclipse.m2e.codeclustering.mavenProjectFile">
+         <and>
+            <with
+                  variable="uri">
+               <test
+                     forcePluginActivation="true"
+                     property="org.eclipse.m2e.codeclustering.enabled">
+               </test>
+            </with>
+            <with
+                  variable="resource">
+               <adapt
+                     type="org.eclipse.core.resources.IResource">
+                  <test
+                        property="org.eclipse.core.resources.projectNature"
+                        value="org.eclipse.m2e.core.maven2Nature">
+                  </test>
+               </adapt>
+            </with>
+         </and>
+      </definition>
+   </extension>
+
+   <extension
+         point="org.eclipse.core.expressions.propertyTesters">
+      <propertyTester
+            class="org.eclipse.m2e.codeclustering.internal.ClusteringPropertyTester"
+            id="org.eclipse.m2e.codeclustering.propertyTester"
+            namespace="org.eclipse.m2e.codeclustering"
+            properties="enabled"
+            type="java.lang.Object">
+      </propertyTester>
+   </extension>
+
+   <extension
+         id="duplicate"
+         name="%marker.name"
+         point="org.eclipse.core.resources.markers">
+      <super
+            type="org.eclipse.lsp4e.diagnostic">
+      </super>
+      <persistent
+            value="false">
+      </persistent>
+   </extension>
+
+   <extension
+         point="org.eclipse.core.runtime.preferences">
+      <initializer
+            class="org.eclipse.m2e.codeclustering.internal.ClusteringPreferenceInitializer">
+      </initializer>
+   </extension>
+
+   <extension
+         point="org.eclipse.ui.preferencePages">
+      <page
+            category="org.eclipse.m2e.core.preferences.Maven2PreferencePage"
+            class="org.eclipse.m2e.codeclustering.internal.ClusteringPreferencePage"
+            id="org.eclipse.m2e.codeclustering.preferencePage"
+            name="%preferencePage.name">
+         <keywordReference
+               id="org.eclipse.m2e.core.maven">
+         </keywordReference>
+      </page>
+   </extension>
+
+</plugin>

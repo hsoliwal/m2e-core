@@ -15,6 +15,9 @@
    <feature id="org.eclipse.m2e.pde.feature">
       <category name="m2e"/>
    </feature>
+   <feature id="org.eclipse.m2e.codeclustering.feature">
+      <category name="m2e"/>
+   </feature>
    <feature id="org.eclipse.m2e.sdk.feature">
       <category name="m2e"/>
    </feature>
