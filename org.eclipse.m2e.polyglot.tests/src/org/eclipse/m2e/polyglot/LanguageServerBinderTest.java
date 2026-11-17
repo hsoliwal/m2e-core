@@ -107,10 +107,7 @@ public class LanguageServerBinderTest {
 			other.addFileSpec("rs", IContentType.FILE_EXTENSION_SPEC);
 			IContentType first = types.findContentTypeFor("file.rs");
 			Assume.assumeFalse("the other content type is picked first", first.equals(other));
-			ILaunchConfiguration corrosion = DebugPlugin.getDefault().getLaunchManager()
-					.getLaunchConfigurationType(LanguageServerBinder.PROGRAM_TYPE)
-					.newInstance(null, LanguageServerBinder.NAME_PREFIX + "corrosion-test").doSave();
-			LanguageServersRegistry.getInstance().registerAssociation(other, corrosion, Set.of(ILaunchManager.RUN_MODE));
+			associateAnotherServer(other, "corrosion-test");
 
 			assertFalse(LanguageServerBinder.served(first));
 			assertEquals(BindOutcome.ALREADY_SERVED, new LanguageServerBinder().bind(RUST, command -> Optional.of(Path.of(command))));
@@ -118,6 +115,14 @@ public class LanguageServerBinderTest {
 		} finally {
 			types.removeContentType(OTHER_RUST);
 		}
+	}
+
+	/** Registers a program launch configuration as another plug-in's language server for {@code contentType}. */
+	private static void associateAnotherServer(IContentType contentType, String name) throws CoreException {
+		ILaunchConfiguration server = DebugPlugin.getDefault().getLaunchManager()
+				.getLaunchConfigurationType(LanguageServerBinder.PROGRAM_TYPE)
+				.newInstance(null, LanguageServerBinder.NAME_PREFIX + name).doSave();
+		LanguageServersRegistry.getInstance().registerAssociation(contentType, server, Set.of(ILaunchManager.RUN_MODE));
 	}
 
 	@Test
