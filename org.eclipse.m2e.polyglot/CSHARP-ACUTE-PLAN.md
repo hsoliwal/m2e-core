@@ -61,5 +61,6 @@ makes it use the same compiler settings as the IDE. Both compilers' diagnostics 
   `org.eclipse.acute.csharp` (`cs`, priority normal) and `org.eclipse.acute.csproj`; LSP4E servers
   `org.eclipse.acute.roslynLS` and `org.eclipse.acute.msbuild`; builder
   `org.eclipse.acute.builder.IncrementalDotnetBuilder`; launch types for `dotnet run` and `dotnet test`.
-- This bundle: `language-servers.tsv`, `plugin.xml`, `LanguageServerBinder`, `PolyglotManifest` (tool names keep
-  their `@m3:` form, so provider tasks map to no server unless a row names them).
+- This bundle: `language-servers.tsv`, `plugin.xml`, `LanguageServerBinder`, `PolyglotManifest` (a provider task
+  `@m3:<provider>:<capability>:<language>` counts as its provider: `@m3:surefire:interpreter:trx` as `surefire`,
+  `@m3:ecj:compiler:java` as `ecj`; neither has a `tool` row, so neither maps to a server).
