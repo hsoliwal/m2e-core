@@ -15,6 +15,7 @@
 package org.eclipse.m2e.polyglot;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
@@ -64,5 +65,83 @@ public class LanguageServerCatalogTest {
 		assertThrows(IOException.class, () -> LanguageServerCatalog.parse(List.of(m, "tool\tgo")));
 		assertThrows(IOException.class, () -> LanguageServerCatalog.parse(List.of(m, "server\tgo\tf.go")));
 		assertThrows(IOException.class, () -> LanguageServerCatalog.parse(List.of(m, "editor\tgo\tf.go\tgopls")));
+	}
+
+	@Test
+	public void theBundledCatalogServesTheEclipseLanguagePluginLanguages() throws IOException {
+		LanguageServerCatalog catalog = LanguageServerCatalog.load();
+		List<LanguageBinding> bindings = catalog.bindingsFor(
+				List.of("xsltproc", "rebar3", "kotlinc", "composer", "cobc", "groovyc"),
+				List.of("org.jetbrains.kotlin:kotlin-maven-plugin", "org.codehaus.gmavenplus:gmavenplus-plugin"));
+		assertEquals(List.of("cobol", "php", "groovy", "kotlin", "erlang", "xml"),
+				bindings.stream().map(LanguageBinding::language).toList());
+		assertEquals(List.of("cobol-language-support"), commands(bindings.get(0)));
+		assertEquals(List.of("phpactor", "intelephense"), commands(bindings.get(1)));
+		assertEquals(List.of("groovy-language-server"), commands(bindings.get(2)));
+		assertEquals(List.of("kotlin-language-server", "kotlin-lsp"), commands(bindings.get(3)));
+		assertEquals(List.of("elp", "erlang_ls"), commands(bindings.get(4)));
+		assertEquals(List.of("lemminx"), commands(bindings.get(5)));
+		assertEquals(List.of(true, true, true, true, true, false),
+				bindings.stream().map(LanguageBinding::yieldsToPlugins).toList());
+		assertEquals(List.of("server"), bindings.get(4).servers().get(0).arguments());
+	}
+
+	@Test
+	public void theBundledCatalogMapsMavenPluginsOnlyByTheirPluginRows() throws IOException {
+		LanguageServerCatalog catalog = LanguageServerCatalog.load();
+		assertTrue(catalog.knowsPlugin("org.codehaus.gmavenplus:gmavenplus-plugin"));
+		assertTrue(catalog.knowsPlugin("org.jetbrains.kotlin:kotlin-maven-plugin"));
+		assertFalse(catalog.knowsPlugin("org.codehaus.mojo:xml-maven-plugin"));
+		assertFalse(catalog.knowsPlugin("gmavenplus-plugin"));
+		assertEquals(List.of("groovy"), languages(
+				catalog.bindingsFor(List.of(), List.of("org.codehaus.gmavenplus:gmavenplus-plugin", "x:y")).stream()
+						.map(binding -> binding.servers().get(0)).toList()));
+		assertTrue(catalog.bindingsFor(List.of("gradle"), List.of("org.apache.maven.plugins:maven-compiler-plugin"))
+				.isEmpty());
+	}
+
+	@Test
+	public void alternativesKeepCatalogOrderAndToolsAndPluginsShareLanguages() throws IOException {
+		LanguageServerCatalog catalog = LanguageServerCatalog.parse(List.of(LanguageServerCatalog.MAGIC, //
+				"tool\tphp\tphp", "plugin\tg:php-plugin\tphp\terlang", //
+				"server\tphp\tfile.php\tphpactor\tlanguage-server", "server\tphp\tfile.php\tintelephense\t--stdio", //
+				"server\terlang\tfile.erl\telp\tserver", "yield\terlang"));
+		List<LanguageBinding> bindings = catalog.bindingsFor(List.of("php"), List.of("g:php-plugin"));
+		assertEquals(2, bindings.size());
+		assertEquals(new LanguageBinding("php", List.of(
+				new LanguageServer("php", "file.php", "phpactor", List.of("language-server")),
+				new LanguageServer("php", "file.php", "intelephense", List.of("--stdio"))), false), bindings.get(0));
+		assertEquals("file.php", bindings.get(0).sampleFile());
+		assertTrue(bindings.get(1).yieldsToPlugins());
+		assertEquals(List.of("phpactor"), commands(catalog.serversFor(List.of("php"))));
+	}
+
+	@Test
+	public void inconsistentPluginYieldAndAlternativeRowsAreRejected() {
+		String m = LanguageServerCatalog.MAGIC;
+		String erl = "server\terlang\tf.erl\telp";
+		assertThrows(IOException.class, () -> LanguageServerCatalog.parse(List.of(m, erl, "plugin\tg:a")));
+		assertThrows(IOException.class, () -> LanguageServerCatalog.parse(List.of(m, erl, "plugin\tg:a\tphp")));
+		assertThrows(IOException.class,
+				() -> LanguageServerCatalog.parse(List.of(m, erl, "plugin\tg:a\terlang", "plugin\tg:a\terlang")));
+		assertThrows(IOException.class, () -> LanguageServerCatalog.parse(List.of(m, erl, "yield")));
+		assertThrows(IOException.class, () -> LanguageServerCatalog.parse(List.of(m, erl, "yield\tphp")));
+		assertThrows(IOException.class,
+				() -> LanguageServerCatalog.parse(List.of(m, erl, "server\terlang\tother.erl\terlang_ls")));
+		assertThrows(IOException.class,
+				() -> LanguageServerCatalog.parse(List.of(m, erl, "server\terlang\tf.erl\telp\tserver")));
+	}
+
+	@Test
+	public void aBindingNeedsAServer() {
+		assertThrows(IllegalArgumentException.class, () -> new LanguageBinding("go", List.of(), false));
+	}
+
+	private static List<String> commands(LanguageBinding binding) {
+		return commands(binding.servers());
+	}
+
+	private static List<String> commands(List<LanguageServer> servers) {
+		return servers.stream().map(LanguageServer::command).toList();
 	}
 }

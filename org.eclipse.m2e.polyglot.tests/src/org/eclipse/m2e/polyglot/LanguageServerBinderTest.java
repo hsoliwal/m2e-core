@@ -21,7 +21,9 @@ import static org.junit.Assert.assertTrue;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.eclipse.core.runtime.CoreException;
@@ -33,6 +35,7 @@ import org.eclipse.debug.core.ILaunchManager;
 import org.eclipse.lsp4e.ContentTypeToLSPLaunchConfigEntry;
 import org.eclipse.lsp4e.LanguageServersRegistry;
 import org.junit.After;
+import org.junit.Assume;
 import org.junit.Test;
 
 public class LanguageServerBinderTest {
@@ -95,5 +98,60 @@ public class LanguageServerBinderTest {
 		LanguageServer unknown = new LanguageServer("x", "file.no-such-extension", "x-test", List.of());
 		assertEquals(BindOutcome.NO_CONTENT_TYPE, binder.bind(unknown, command -> Optional.of(Path.of("x"))));
 		assertFalse(LanguageServerBinder.served(Platform.getContentTypeManager().findContentTypeFor("file.go")));
+	}
+
+	@Test
+	public void theEclipseLanguagePluginLanguagesHaveLowPriorityContentTypes() {
+		for (String language : List.of("groovy", "kotlin", "php", "cobol", "erlang")) {
+			String sample = sample(language);
+			assertEquals(sample, LanguageServerBinder.OWN_CONTENT_TYPES + language,
+					Platform.getContentTypeManager().findContentTypeFor(sample).getId());
+		}
+		assertEquals("org.eclipse.core.runtime.xml",
+				Platform.getContentTypeManager().findContentTypeFor("file.xml").getId());
+	}
+
+	@Test
+	public void theFirstAlternativeOnThePathIsBound() throws CoreException, IOException {
+		executable = Files.createTempFile("kotlin-lsp-test", ".exe");
+		LanguageBinding kotlin = new LanguageBinding("kotlin",
+				List.of(new LanguageServer("kotlin", "file.kt", "kotlin-language-server-test", List.of()),
+						new LanguageServer("kotlin", "file.kt", "kotlin-lsp-test", List.of("--stdio"))),
+				true);
+		Map<String, Path> onPath = Map.of("kotlin-lsp-test", executable);
+
+		assertEquals(BindOutcome.BOUND, new LanguageServerBinder().bind(kotlin, c -> Optional.ofNullable(onPath.get(c))));
+
+		IContentType contentType = Platform.getContentTypeManager().findContentTypeFor("file.kt");
+		ILaunchConfiguration configuration = LanguageServersRegistry.getInstance().getContentTypeToLSPLaunches()
+				.stream().filter(e -> e.getKey().equals(contentType)).findFirst().orElseThrow().getLaunchConfiguration();
+		assertEquals(LanguageServerBinder.NAME_PREFIX + "kotlin-lsp-test", configuration.getName());
+		assertEquals("--stdio", configuration.getAttribute(LanguageServerBinder.ATTR_ARGUMENTS, ""));
+	}
+
+	@Test
+	public void aYieldingLanguageLeavesAnotherPluginsContentTypeAlone() throws CoreException {
+		IContentType xml = Platform.getContentTypeManager().findContentTypeFor("file.xml");
+		Assume.assumeFalse("an LSP4E server already serves XML", LanguageServerBinder.served(xml));
+		LanguageBinding yielding = new LanguageBinding("xml",
+				List.of(new LanguageServer("xml", "file.xml", "lemminx-test", List.of())), true);
+		List<String> looked = new ArrayList<>();
+
+		assertEquals(BindOutcome.IDE_PLUGIN, new LanguageServerBinder().bind(yielding, command -> {
+			looked.add(command);
+			return Optional.of(Path.of(command));
+		}));
+
+		assertEquals(List.of(), looked);
+		assertFalse(LanguageServerBinder.served(xml));
+	}
+
+	private static String sample(String language) {
+		return switch (language) {
+		case "kotlin" -> "file.kt";
+		case "cobol" -> "file.cbl";
+		case "erlang" -> "file.erl";
+		default -> "file." + language;
+		};
 	}
 }

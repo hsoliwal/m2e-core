@@ -15,6 +15,7 @@
 package org.eclipse.m2e.polyglot;
 
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
@@ -33,7 +34,8 @@ import org.eclipse.lsp4e.LanguageServersRegistry;
 /**
  * Registers a language server with LSP4E the way LSP4E's <i>Language Servers</i> preference page does: an External
  * Tools program launch configuration associated with a content type. A content type that any LSP4E server already
- * serves, from a plug-in or from the user, is left alone.
+ * serves, from a plug-in or from the user, is left alone; so is another plug-in's content type when the language
+ * yields to plug-ins. Of several alternative servers, the first whose command is found is registered.
  */
 final class LanguageServerBinder {
 
@@ -45,29 +47,30 @@ final class LanguageServerBinder {
 
 	static final String NAME_PREFIX = "Language server: ";
 
+	/** The prefix of the content types this bundle declares. */
+	static final String OWN_CONTENT_TYPES = "org.eclipse.m2e.polyglot.";
+
+	/** A server and where its command was found. */
+	record Located(LanguageServer server, Path executable) {
+	}
+
 	BindOutcome bind(LanguageServer server, Function<String, Optional<Path>> locator) throws CoreException {
-		IContentType contentType = Platform.getContentTypeManager().findContentTypeFor(server.sampleFile());
+		return bind(new LanguageBinding(server.language(), List.of(server), false), locator);
+	}
+
+	BindOutcome bind(LanguageBinding binding, Function<String, Optional<Path>> locator) throws CoreException {
+		IContentType contentType = Platform.getContentTypeManager().findContentTypeFor(binding.sampleFile());
 		if (contentType == null) {
 			return BindOutcome.NO_CONTENT_TYPE;
 		}
 		if (served(contentType)) {
 			return BindOutcome.ALREADY_SERVED;
 		}
-		Optional<Path> executable = locator.apply(server.command());
-		if (executable.isEmpty()) {
-			return BindOutcome.NOT_ON_PATH;
+		if (binding.yieldsToPlugins() && !contentType.getId().startsWith(OWN_CONTENT_TYPES)) {
+			return BindOutcome.IDE_PLUGIN;
 		}
-		ILaunchManager launches = DebugPlugin.getDefault().getLaunchManager();
-		ILaunchConfigurationType type = launches.getLaunchConfigurationType(PROGRAM_TYPE);
-		if (type == null) {
-			return BindOutcome.NO_PROGRAM_LAUNCH_TYPE;
-		}
-		Optional<ILaunchConfiguration> existing = findConfiguration(launches, type, server);
-		ILaunchConfiguration configuration = existing.isPresent() ? existing.get()
-				: createConfiguration(type, server, executable.get());
-		LanguageServersRegistry.getInstance().registerAssociation(contentType, configuration,
-				Set.of(ILaunchManager.RUN_MODE));
-		return BindOutcome.BOUND;
+		Optional<Located> located = locate(binding, locator);
+		return located.isEmpty() ? BindOutcome.NOT_ON_PATH : register(contentType, located.get());
 	}
 
 	/** True when an LSP4E server, from a launch configuration or a plug-in, serves exactly this content type. */
@@ -76,6 +79,27 @@ final class LanguageServerBinder {
 		return Stream.concat(registry.getContentTypeToLSPLaunches().stream().map(entry -> entry.getKey()),
 				registry.getContentTypeToLSPExtensions().stream().map(entry -> entry.getKey()))
 				.anyMatch(contentType::equals);
+	}
+
+	/** The first alternative whose command the locator finds. */
+	static Optional<Located> locate(LanguageBinding binding, Function<String, Optional<Path>> locator) {
+		return binding.servers().stream()
+				.flatMap(server -> locator.apply(server.command()).map(path -> new Located(server, path)).stream())
+				.findFirst();
+	}
+
+	private static BindOutcome register(IContentType contentType, Located located) throws CoreException {
+		ILaunchManager launches = DebugPlugin.getDefault().getLaunchManager();
+		ILaunchConfigurationType type = launches.getLaunchConfigurationType(PROGRAM_TYPE);
+		if (type == null) {
+			return BindOutcome.NO_PROGRAM_LAUNCH_TYPE;
+		}
+		Optional<ILaunchConfiguration> existing = findConfiguration(launches, type, located.server());
+		ILaunchConfiguration configuration = existing.isPresent() ? existing.get()
+				: createConfiguration(type, located.server(), located.executable());
+		LanguageServersRegistry.getInstance().registerAssociation(contentType, configuration,
+				Set.of(ILaunchManager.RUN_MODE));
+		return BindOutcome.BOUND;
 	}
 
 	private static Optional<ILaunchConfiguration> findConfiguration(ILaunchManager launches,

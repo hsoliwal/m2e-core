@@ -16,6 +16,7 @@ package org.eclipse.m2e.polyglot;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -31,10 +32,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Gives a Maven project that runs native tools from a polyglot task manifest a language server for every language
- * those tools build. A Maven plugin opts in by mapping its executions to this configurator in the m2e lifecycle
- * mapping metadata embedded in its jar ({@code META-INF/m2e/lifecycle-mapping-metadata.xml}); each such execution's
- * {@code manifest} parameter names the task manifest. Languages and servers come from {@link LanguageServerCatalog}.
+ * Gives a Maven project a language server for every language its build compiles. Two kinds of executions are mapped
+ * to it, in m2e lifecycle mapping metadata:
+ * <ul>
+ * <li>executions of a plug-in that runs native tools from a polyglot task manifest, mapped to
+ * {@code org.eclipse.m2e.polyglot.configurator} in the metadata embedded in that plug-in's jar
+ * ({@code META-INF/m2e/lifecycle-mapping-metadata.xml}); each execution's {@code manifest} parameter names the task
+ * manifest, and its tools give the languages;</li>
+ * <li>executions of a language's Maven plug-in (GMavenPlus, the Kotlin plug-in), mapped to
+ * {@code org.eclipse.m2e.polyglot.languagePlugins} in this bundle's metadata; the catalog's {@code plugin} rows give
+ * the languages.</li>
+ * </ul>
+ * Languages and servers come from {@link LanguageServerCatalog}. Maven keeps building; nothing runs in the Eclipse
+ * build.
  */
 public class PolyglotProjectConfigurator extends AbstractProjectConfigurator {
 
@@ -45,18 +55,31 @@ public class PolyglotProjectConfigurator extends AbstractProjectConfigurator {
 	@Override
 	public void configure(ProjectConfigurationRequest request, IProgressMonitor monitor) throws CoreException {
 		IMavenProjectFacade facade = request.mavenProjectFacade();
+		LanguageServerCatalog catalog = catalog();
 		Set<String> tools = new TreeSet<>();
+		Set<String> plugins = new TreeSet<>();
 		for (MojoExecutionKey key : getConfiguratorExecutions(facade).getOrDefault(getId(), Set.of())) {
-			tools.addAll(tools(facade, facade.getMojoExecution(key, monitor), monitor));
+			String plugin = pluginKey(key);
+			if (catalog.knowsPlugin(plugin)) {
+				plugins.add(plugin);
+			} else {
+				tools.addAll(tools(facade, facade.getMojoExecution(key, monitor), monitor));
+			}
 		}
-		if (tools.isEmpty()) {
-			return;
-		}
-		String project = facade.getProject().getName();
+		bind(facade.getProject().getName(), catalog.bindingsFor(tools, plugins));
+	}
+
+	/** The plug-in of an execution as the catalog's {@code plugin} rows name it: {@code groupId:artifactId}. */
+	static String pluginKey(MojoExecutionKey key) {
+		return key.groupId() + ":" + key.artifactId();
+	}
+
+	private static void bind(String project, List<LanguageBinding> bindings) throws CoreException {
 		LanguageServerBinder binder = new LanguageServerBinder();
-		for (LanguageServer server : catalog().serversFor(tools)) {
-			BindOutcome outcome = binder.bind(server, Executables::find);
-			LOG.info("{}: {} language server {} -> {}", project, server.language(), server.command(), outcome);
+		for (LanguageBinding binding : bindings) {
+			BindOutcome outcome = binder.bind(binding, Executables::find);
+			List<String> commands = binding.servers().stream().map(LanguageServer::command).toList();
+			LOG.info("{}: {} language server {} -> {}", project, binding.language(), commands, outcome);
 		}
 	}
 
