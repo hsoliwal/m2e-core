@@ -84,14 +84,30 @@ public class LanguageServerBinderTest {
 		assertEquals(BindOutcome.BOUND, binder.bind(RUST, command -> Optional.of(executable)));
 
 		assertTrue(LanguageServerBinder.served(rust));
-		ContentTypeToLSPLaunchConfigEntry entry = LanguageServersRegistry.getInstance().getContentTypeToLSPLaunches()
-				.stream().filter(e -> e.getKey().equals(rust)).findFirst().orElseThrow();
-		ILaunchConfiguration configuration = entry.getLaunchConfiguration();
+		ILaunchConfiguration configuration = boundConfiguration(rust);
 		assertEquals(LanguageServerBinder.NAME_PREFIX + "rust-analyzer-test", configuration.getName());
 		assertEquals(LanguageServerBinder.PROGRAM_TYPE, configuration.getType().getIdentifier());
 		assertEquals(executable.toAbsolutePath().toString(),
 				configuration.getAttribute(LanguageServerBinder.ATTR_LOCATION, ""));
 		assertEquals(BindOutcome.ALREADY_SERVED, binder.bind(RUST, command -> Optional.of(executable)));
+	}
+
+	/** The launch configuration registered with LSP4E for exactly this content type. */
+	private static ILaunchConfiguration boundConfiguration(IContentType contentType) {
+		return LanguageServersRegistry.getInstance().getContentTypeToLSPLaunches().stream()
+				.filter(e -> e.getKey().equals(contentType)).findFirst().orElseThrow().getLaunchConfiguration();
+	}
+
+	/** LSP4E starts a server registered for a base content type for its subtypes too, so the subtype is served. */
+	@Test
+	public void aServerOnABaseContentTypeCounts() throws CoreException {
+		IContentType rust = Platform.getContentTypeManager().findContentTypeFor("file.rs");
+		Assume.assumeFalse("an LSP4E server already serves Rust", LanguageServerBinder.served(rust));
+		associateAnotherServer(rust.getBaseType(), "text-test");
+
+		assertTrue(LanguageServerBinder.served(rust));
+		assertEquals(BindOutcome.ALREADY_SERVED,
+				new LanguageServerBinder().bind(RUST, command -> Optional.of(Path.of(command))));
 	}
 
 	/**

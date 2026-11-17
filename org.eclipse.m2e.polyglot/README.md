@@ -51,25 +51,27 @@ mapping would override.
 2. `language-servers.tsv` maps each tool and plug-in to its languages, and each language to a
    sample file name and one or more language server commands, in order of preference:
 
-   | Tools or plug-ins | Language | Servers |
-   |-------------------|----------|---------|
-   | cargo | Rust | `rust-analyzer` |
-   | go | Go | `gopls` |
-   | make, cmake, meson, ctest | C, C++ | `clangd` |
-   | npm, pnpm, yarn, bun | JavaScript, TypeScript | `typescript-language-server --stdio` |
-   | python, python3, pytest | Python | `pylsp` |
-   | dotnet | C# | `csharp-ls` |
-   | swift | Swift | `sourcekit-lsp` |
-   | xmllint, xsltproc | XML | `lemminx` |
-   | groovy, groovyc, GMavenPlus | Groovy | `groovy-language-server` |
-   | kotlin, kotlinc, Kotlin Maven plug-in | Kotlin | `kotlin-language-server`, else `kotlin-lsp --stdio` |
-   | php, composer, phpunit | PHP | `phpactor language-server`, else `intelephense --stdio` |
-   | cobc | COBOL | `cobol-language-support` |
-   | erl, erlc, escript, rebar3 | Erlang | `elp server`, else `erlang_ls` |
+   | Tools or plug-ins | Language | Servers | Server licences |
+   |-------------------|----------|---------|-----------------|
+   | cargo | Rust | `rust-analyzer` | MIT OR Apache-2.0 |
+   | go | Go | `gopls` | BSD-3-Clause |
+   | make, cmake, meson, ctest | C, C++ | `clangd` | Apache-2.0 WITH LLVM-exception |
+   | npm, pnpm, yarn, bun | JavaScript, TypeScript | `typescript-language-server --stdio` | Apache-2.0 (parts MIT, from vscode) |
+   | python, python3, pytest | Python | `pylsp` | MIT |
+   | dotnet | C# | `csharp-ls` | MIT |
+   | swift | Swift | `sourcekit-lsp` | Apache-2.0 WITH Swift-exception |
+   | xmllint, xsltproc | XML | `lemminx` | EPL-2.0 |
+   | groovy, groovyc, GMavenPlus | Groovy | `groovy-language-server` | Apache-2.0 |
+   | kotlin, kotlinc, Kotlin Maven plug-in | Kotlin | `kotlin-language-server`, else `kotlin-lsp --stdio` | MIT; Apache-2.0 |
+   | php, composer, phpunit | PHP | `phpactor language-server`, else `intelephense --stdio` | MIT; closed source, free tier |
+   | cobc | COBOL | `cobol-language-support` | EPL-2.0 (Eclipse Che4z) |
+   | erl, erlc, escript, rebar3 | Erlang | `elp server`, else `erlang_ls` | Apache-2.0 OR MIT; Apache-2.0 (archived) |
 
-   The command names are the ones the Mason registry installs. phpactor is MIT licensed and is
+   The command names are the ones the Mason registry installs. Every server runs as a separate
+   program found on `PATH`; none is bundled or copied. phpactor is MIT licensed and is
    preferred; intelephense is closed source with a free tier, and is used only when it is the
-   one installed.
+   one installed. [FOSS_REUSE_DECISION.tsv](FOSS_REUSE_DECISION.tsv) records each server's
+   repository, licence and how it is used, with the other donors of this bundle.
 3. For each language, the configurator asks Eclipse which content type a file with the
    sample name has. It acts only when no LSP4E server serves any content type of such a file yet
    (LSP4E starts the servers of all of them), and one of the
@@ -94,7 +96,10 @@ mapping would override.
   bundle's own content type. When Groovy-Eclipse, Kotlin for Eclipse, PDT, Erlide or another
   plug-in claims the files, it keeps them, even without LSP4E (outcome `IDE_PLUGIN`).
 - XML uses the platform XML content type. Where Wild Web Developer is installed (the m2e LemMinX
-  feature requires it), LemMinX already serves XML and nothing is added.
+  feature requires it), LemMinX already serves XML and nothing is added. Where the WTP XML editor
+  (`org.eclipse.wst.xml.ui`) is installed, it serves XML without LSP4E, and `lemminx` is not bound
+  either (outcome `IDE_PLUGIN`): LSP4E connects every text buffer, so it would add its diagnostics
+  next to WTP's own.
 - C# follows the same rule. With aCute installed, its `org.eclipse.acute.csharp` content type and
   Roslyn server keep `.cs` files; `csharp-ls` is bound only without aCute.
   [CSHARP-ACUTE-PLAN.md](CSHARP-ACUTE-PLAN.md) records what Maven does for .NET folders and the next steps.
@@ -120,5 +125,7 @@ plug-in claims those files.
 - `PATH` resolution, including Windows `PATHEXT`;
 - content-type resolution;
 - the LSP4E association for a server on `PATH`, the first alternative found, no association
-  when a server already serves the content type, and none for another plug-in's content type
-  when the language yields.
+  when a server already serves the content type or one of its base types, and none for another
+  plug-in's content type when the language yields;
+- without a running platform: a server on a base content type serves its subtypes, and XML
+  yields to the WTP XML editor.
