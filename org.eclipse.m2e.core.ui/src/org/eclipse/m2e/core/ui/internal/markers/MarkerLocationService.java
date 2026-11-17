@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2008-2014 Sonatype, Inc. and others.
+ * Copyright (c) 2008-2026 Sonatype, Inc. and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License 2.0
  * which accompanies this distribution, and is available at
@@ -14,15 +14,11 @@
 
 package org.eclipse.m2e.core.ui.internal.markers;
 
-import static org.eclipse.m2e.core.ui.internal.editing.PomEdits.childEquals;
-import static org.eclipse.m2e.core.ui.internal.editing.PomEdits.childMissingOrEqual;
 import static org.eclipse.m2e.core.ui.internal.editing.PomEdits.findChild;
 import static org.eclipse.m2e.core.ui.internal.editing.PomEdits.findChilds;
 import static org.eclipse.m2e.core.ui.internal.editing.PomEdits.getTextValue;
-import static org.eclipse.m2e.core.ui.internal.editing.PomEdits.textEquals;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -35,11 +31,16 @@ import org.w3c.dom.Comment;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 
+import org.eclipse.core.filebuffers.FileBuffers;
+import org.eclipse.core.filebuffers.ITextFileBuffer;
+import org.eclipse.core.filebuffers.ITextFileBufferManager;
+import org.eclipse.core.filebuffers.LocationKind;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.jface.text.BadLocationException;
+import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.text.IRegion;
 import org.eclipse.osgi.util.NLS;
 import org.eclipse.wst.sse.core.StructuredModelManager;
@@ -67,9 +68,7 @@ import org.eclipse.m2e.core.internal.preferences.MavenPreferenceConstants;
 import org.eclipse.m2e.core.internal.preferences.ProblemSeverity;
 import org.eclipse.m2e.core.ui.internal.M2EUIPluginActivator;
 import org.eclipse.m2e.core.ui.internal.editing.PomEdits;
-import org.eclipse.m2e.core.ui.internal.editing.PomEdits.Matcher;
 import org.eclipse.m2e.core.ui.internal.util.XmlUtils;
-import org.eclipse.m2e.model.edit.pom.util.NodeOperation;
 
 
 /**
@@ -92,7 +91,9 @@ public class MarkerLocationService implements IMarkerLocationService, IEditorMar
 
   @Override
   public void findLocationForMarker(final IMarker marker) {
-    IDOMModel domModel = null;
+    IFile resource = (IFile) marker.getResource();
+    ITextFileBufferManager bufferManager = FileBuffers.getTextFileBufferManager();
+    boolean connected = false;
     try {
       Integer lineNumber = (Integer) marker.getAttribute(IMarker.LINE_NUMBER);
       if(lineNumber == null) {
@@ -107,13 +108,14 @@ public class MarkerLocationService implements IMarkerLocationService, IEditorMar
         return;
       }
 
-      IFile resource = (IFile) marker.getResource();
-      domModel = (IDOMModel) StructuredModelManager.getModelManager().getModelForRead(resource);
-      if(domModel == null) {
-        log.debug("Document is not structured: " + resource);
+      bufferManager.connect(resource.getFullPath(), LocationKind.IFILE, null);
+      connected = true;
+      ITextFileBuffer buffer = bufferManager.getTextFileBuffer(resource.getFullPath(), LocationKind.IFILE);
+      if(buffer == null) {
+        log.debug("Document is not a text file: " + resource);
         return;
       }
-      IStructuredDocument document = domModel.getStructuredDocument();
+      IDocument document = buffer.getDocument();
       int charStart = document.getLineOffset(lineNumber - 1) + columnStart - 1;
       marker.setAttribute(IMarker.CHAR_START, charStart);
       int charEnd;
@@ -127,123 +129,12 @@ public class MarkerLocationService implements IMarkerLocationService, IEditorMar
     } catch(Exception e) {
       log.error(e.getMessage(), e);
     } finally {
-      if(domModel != null) {
-        domModel.releaseFromRead();
-      }
-    }
-  }
-
-  public void findLocationForMarker_(final IMarker marker) {
-
-    String hint = marker.getAttribute(IMavenConstants.MARKER_ATTR_EDITOR_HINT, null);
-
-    if(IMavenConstants.EDITOR_HINT_NOT_COVERED_MOJO_EXECUTION.equals(hint)) {
-      try {
-        final boolean lookInPM = false;
-        final String groupId = marker.getAttribute(IMavenConstants.MARKER_ATTR_GROUP_ID, "");
-        final String artifactId = marker.getAttribute(IMavenConstants.MARKER_ATTR_ARTIFACT_ID, "");
-        final String exec = marker.getAttribute(IMavenConstants.MARKER_ATTR_EXECUTION_ID, "");
-        final String goal = marker.getAttribute(IMavenConstants.MARKER_ATTR_GOAL, "");
-        XmlUtils.performOnRootElement((IFile) marker.getResource(), new NodeOperation<Element>() {
-            @Override
-            public void process(Element root, IStructuredDocument structuredDocument) {
-            Element build = findChild(root, PomEdits.BUILD);
-            List<Element> candidates = new ArrayList<>();
-            Element plugin = findPlugin(build, groupId, artifactId);
-            if(plugin != null) {
-              candidates.add(plugin);
-            }
-            if(lookInPM) {
-              plugin = findPlugin(findChild(build, PomEdits.PLUGIN_MANAGEMENT), groupId, artifactId);
-              if(plugin != null) {
-                candidates.add(plugin);
-              }
-            }
-            //look in profiles
-            List<Element> profiles = findChilds(findChild(root, PomEdits.PROFILES), PomEdits.PROFILE);
-            //TODO eventually we should only process the activated profiles.. but need MavenProject for it.
-            for(Element profile : profiles) {
-              Element profBuild = findChild(profile, PomEdits.BUILD);
-              plugin = findPlugin(profBuild, groupId, artifactId);
-              if(plugin != null) {
-                candidates.add(plugin);
-              }
-              if(lookInPM) {
-                plugin = findPlugin(findChild(profBuild, PomEdits.PLUGIN_MANAGEMENT), groupId, artifactId);
-                if(plugin != null) {
-                  candidates.add(plugin);
-                }
-              }
-            }
-            Element ourMarkerPlacement = null;
-            for(Element candid : candidates) {
-              Matcher match = "default".equals(exec) ? childMissingOrEqual(PomEdits.ID, "default")
-                  : childEquals(PomEdits.ID, exec);
-              Element execution = findChild(findChild(candid, PomEdits.EXECUTIONS), PomEdits.EXECUTION, match);
-              if(execution != null) {
-                Element goalEl = findChild(findChild(execution, PomEdits.GOALS), PomEdits.GOAL, textEquals(goal));
-                if(goalEl != null) {
-                  ourMarkerPlacement = goalEl;
-                  break;
-                }
-                //only remember the first execution match
-                if(ourMarkerPlacement == null) {
-                  ourMarkerPlacement = findChild(execution, PomEdits.ID);
-                  if(ourMarkerPlacement == null) { //just old plain paranoia
-                    ourMarkerPlacement = execution;
-                  }
-                }
-              }
-            }
-            if(ourMarkerPlacement == null) {
-              plugin = candidates.size() > 0 ? candidates.get(0) : null;
-              //executions not here (eg. in PM or parent PM), just mark the plugin's artifactId
-              ourMarkerPlacement = findChild(plugin, PomEdits.ARTIFACT_ID);
-              if(ourMarkerPlacement == null && plugin != null) { //just old plain paranoia
-                ourMarkerPlacement = plugin;
-              } else {
-                //what are the strategies for placement when no plugin is found?
-                // we could.. search pluginManagement, but it's unlikely to be there..
-                ourMarkerPlacement = build != null ? build : root;
-              }
-            }
-
-            annotateMarker(marker, structuredDocument, ourMarkerPlacement);
-          }
-
-          private Element findPlugin(Element build, String groupId, String artifactId) {
-            Matcher grIdmatch = "org.apache.maven.plugins".equals(groupId)
-                ? childMissingOrEqual(PomEdits.GROUP_ID, groupId)
-                : childEquals(PomEdits.GROUP_ID, groupId);
-            return findChild(findChild(build, PomEdits.PLUGINS), PomEdits.PLUGIN, grIdmatch,
-                childEquals(PomEdits.ARTIFACT_ID, artifactId));
-          }
-        });
-      } catch(IOException e) {
-        log.error("Error locating marker", e);
-      } catch(CoreException e) {
-        log.error("Error locating marker", e);
-      }
-    }
-  }
-
-  private void annotateMarker(final IMarker marker, IStructuredDocument structuredDocument,
-      Element ourMarkerPlacement) {
-    if(ourMarkerPlacement instanceof IndexedRegion region) {
-      try {
-        marker.setAttribute(IMarker.CHAR_START, region.getStartOffset());
-        //as end, mark just the end of line where the region starts to prevent marking the entire <build> section.
-        IRegion line;
+      if(connected) {
         try {
-          line = structuredDocument.getLineInformationOfOffset(region.getStartOffset());
-          int end = Math.min(region.getEndOffset(), line.getOffset() + line.getLength());
-          marker.setAttribute(IMarker.CHAR_END, end);
-        } catch(BadLocationException e) {
-          marker.setAttribute(IMarker.CHAR_END, region.getStartOffset() + region.getLength());
+          bufferManager.disconnect(resource.getFullPath(), LocationKind.IFILE, null);
+        } catch(CoreException e) {
+          log.error(e.getMessage(), e);
         }
-        marker.setAttribute(IMarker.LINE_NUMBER, structuredDocument.getLineOfOffset(region.getStartOffset()) + 1);
-      } catch(CoreException e) {
-        log.error(e.getMessage(), e);
       }
     }
   }
