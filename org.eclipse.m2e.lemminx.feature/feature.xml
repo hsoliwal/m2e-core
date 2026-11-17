@@ -24,4 +24,8 @@
          id="org.eclipse.m2e.editor.lemminx.bnd"
          version="0.0.0"/>
 
+   <plugin
+         id="org.eclipse.m2e.polyglot"
+         version="0.0.0"/>
+
 </feature>

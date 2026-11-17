@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<!--
+  Copyright (c) 2026 Synexia, Hitesh Soliwal (hsoliwal@gmail.com) and others.
+
+  This program and the accompanying materials are made available under the
+  terms of the Apache License, Version 2.0, or (at your option) the Eclipse
+  Public License 2.0, which are available at
+  https://www.apache.org/licenses/LICENSE-2.0 and
+  https://www.eclipse.org/legal/epl-2.0/
+
+  SPDX-License-Identifier: Apache-2.0 OR EPL-2.0
+-->
+<plugin>
+   <extension
+         point="org.eclipse.m2e.core.projectConfigurators">
+      <configurator
+            class="org.eclipse.m2e.polyglot.PolyglotProjectConfigurator"
+            id="org.eclipse.m2e.polyglot.configurator"
+            name="Language servers for polyglot Maven projects">
+      </configurator>
+   </extension>
+   <!-- Low priority: content types of installed IDEs (CDT, Corrosion, Wild Web Developer) win. -->
+   <extension
+         point="org.eclipse.core.contenttype.contentTypes">
+      <content-type id="org.eclipse.m2e.polyglot.rust" name="Rust (polyglot)"
+            base-type="org.eclipse.core.runtime.text" file-extensions="rs" priority="low"/>
+      <content-type id="org.eclipse.m2e.polyglot.go" name="Go (polyglot)"
+            base-type="org.eclipse.core.runtime.text" file-extensions="go" priority="low"/>
+      <content-type id="org.eclipse.m2e.polyglot.c" name="C (polyglot)"
+            base-type="org.eclipse.core.runtime.text" file-extensions="c,h" priority="low"/>
+      <content-type id="org.eclipse.m2e.polyglot.cpp" name="C++ (polyglot)"
+            base-type="org.eclipse.core.runtime.text" file-extensions="cpp,cc,cxx,hpp,hh,hxx" priority="low"/>
+      <content-type id="org.eclipse.m2e.polyglot.javascript" name="JavaScript (polyglot)"
+            base-type="org.eclipse.core.runtime.text" file-extensions="js,mjs,cjs,jsx" priority="low"/>
+      <content-type id="org.eclipse.m2e.polyglot.typescript" name="TypeScript (polyglot)"
+            base-type="org.eclipse.core.runtime.text" file-extensions="ts,mts,cts,tsx" priority="low"/>
+      <content-type id="org.eclipse.m2e.polyglot.python" name="Python (polyglot)"
+            base-type="org.eclipse.core.runtime.text" file-extensions="py,pyi" priority="low"/>
+      <content-type id="org.eclipse.m2e.polyglot.csharp" name="C# (polyglot)"
+            base-type="org.eclipse.core.runtime.text" file-extensions="cs" priority="low"/>
+      <content-type id="org.eclipse.m2e.polyglot.swift" name="Swift (polyglot)"
+            base-type="org.eclipse.core.runtime.text" file-extensions="swift" priority="low"/>
+   </extension>
+   <extension
+         point="org.eclipse.ui.editors">
+      <editorContentTypeBinding contentTypeId="org.eclipse.m2e.polyglot.rust" editorId="org.eclipse.ui.genericeditor.GenericEditor"/>
+      <editorContentTypeBinding contentTypeId="org.eclipse.m2e.polyglot.go" editorId="org.eclipse.ui.genericeditor.GenericEditor"/>
+      <editorContentTypeBinding contentTypeId="org.eclipse.m2e.polyglot.c" editorId="org.eclipse.ui.genericeditor.GenericEditor"/>
+      <editorContentTypeBinding contentTypeId="org.eclipse.m2e.polyglot.cpp" editorId="org.eclipse.ui.genericeditor.GenericEditor"/>
+      <editorContentTypeBinding contentTypeId="org.eclipse.m2e.polyglot.javascript" editorId="org.eclipse.ui.genericeditor.GenericEditor"/>
+      <editorContentTypeBinding contentTypeId="org.eclipse.m2e.polyglot.typescript" editorId="org.eclipse.ui.genericeditor.GenericEditor"/>
+      <editorContentTypeBinding contentTypeId="org.eclipse.m2e.polyglot.python" editorId="org.eclipse.ui.genericeditor.GenericEditor"/>
+      <editorContentTypeBinding contentTypeId="org.eclipse.m2e.polyglot.csharp" editorId="org.eclipse.ui.genericeditor.GenericEditor"/>
+      <editorContentTypeBinding contentTypeId="org.eclipse.m2e.polyglot.swift" editorId="org.eclipse.ui.genericeditor.GenericEditor"/>
+   </extension>
+</plugin>

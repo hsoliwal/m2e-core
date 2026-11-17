@@ -64,6 +64,7 @@
 		<module>org.eclipse.m2e.pde.target</module>
 		<module>org.eclipse.m2e.pde.ui</module>
 		<module>org.eclipse.m2e.pde.connector</module>
+		<module>org.eclipse.m2e.polyglot</module>
 		<module>org.eclipse.m2e.apt.core</module>
 		<module>org.eclipse.m2e.apt.ui</module>
 		<module>org.eclipse.m2e.mavenarchiver</module>
@@ -92,6 +93,7 @@
 		<module>org.eclipse.m2e.profiles.core.tests</module>
 		<module>org.eclipse.m2e.apt.tests</module>
 		<module>org.eclipse.m2e.pde.connector.tests</module>
+		<module>org.eclipse.m2e.polyglot.tests</module>
 		<module>org.eclipse.m2e.pde.target.tests</module>
 		<!-- UI/Integration tests -->
 		<module>org.eclipse.m2e.swtbot.tests</module>
