@@ -1,0 +1,27 @@
+M2E-POLYGLOT-LANGUAGE-SERVERS-V1
+# tool	<tool>	<language>...	(tool names as task manifest rows give them, normalised)
+tool	cargo	rust
+tool	go	go
+tool	make	c	cpp
+tool	cmake	c	cpp
+tool	meson	c	cpp
+tool	ctest	c	cpp
+tool	npm	javascript	typescript
+tool	pnpm	javascript	typescript
+tool	yarn	javascript	typescript
+tool	bun	javascript	typescript
+tool	python	python
+tool	python3	python
+tool	pytest	python
+tool	dotnet	csharp
+tool	swift	swift
+# server	<language>	<sample file>	<command>	<argument>...
+server	rust	file.rs	rust-analyzer
+server	go	file.go	gopls
+server	c	file.c	clangd
+server	cpp	file.cpp	clangd
+server	javascript	file.js	typescript-language-server	--stdio
+server	typescript	file.ts	typescript-language-server	--stdio
+server	python	file.py	pylsp
+server	csharp	file.cs	csharp-ls
+server	swift	file.swift	sourcekit-lsp
