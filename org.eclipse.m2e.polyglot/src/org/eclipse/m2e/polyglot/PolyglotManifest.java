@@ -34,6 +34,9 @@ final class PolyglotManifest {
 
 	private static final String[] WINDOWS_EXTENSIONS = { ".exe", ".cmd", ".bat", ".com" };
 
+	/** The first field of a tool provider task: {@code @m3:<provider>:<capability>:<language>}. */
+	private static final String M3_PROVIDER = "@m3";
+
 	private PolyglotManifest() {
 	}
 
@@ -67,8 +70,16 @@ final class PolyglotManifest {
 		return Collections.unmodifiableSet(tools);
 	}
 
-	/** The last path segment, lower case, without one trailing Windows executable extension. */
+	/**
+	 * The last path segment, lower case, without one trailing Windows executable extension; for a tool provider task
+	 * ({@code @m3:cargo:interpreter:rust}) the provider ({@code cargo}).
+	 */
 	static String toolName(String tool) {
+		String[] provider = tool.split(":", -1);
+		if (provider.length == 4 && M3_PROVIDER.equals(provider[0]) && !provider[1].isEmpty()) {
+			// @m3:<provider>:<capability>:<language>: the provider names the tool (cargo for Rust tests).
+			return provider[1].toLowerCase(Locale.ROOT);
+		}
 		String name = tool.substring(Math.max(tool.lastIndexOf('/'), tool.lastIndexOf('\\')) + 1)
 				.toLowerCase(Locale.ROOT);
 		for (String extension : WINDOWS_EXTENSIONS) {

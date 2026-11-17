@@ -25,10 +25,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.content.IContentType;
+import org.eclipse.core.runtime.content.IContentTypeManager;
 import org.eclipse.debug.core.DebugPlugin;
 import org.eclipse.debug.core.ILaunchConfiguration;
 import org.eclipse.debug.core.ILaunchManager;
@@ -41,6 +43,8 @@ import org.junit.Test;
 public class LanguageServerBinderTest {
 
 	private static final LanguageServer RUST = new LanguageServer("rust", "file.rs", "rust-analyzer-test", List.of());
+
+	private static final String OTHER_RUST = "org.eclipse.m2e.polyglot.tests.otherRust";
 
 	private Path executable;
 
@@ -88,6 +92,32 @@ public class LanguageServerBinderTest {
 		assertEquals(executable.toAbsolutePath().toString(),
 				configuration.getAttribute(LanguageServerBinder.ATTR_LOCATION, ""));
 		assertEquals(BindOutcome.ALREADY_SERVED, binder.bind(RUST, command -> Optional.of(executable)));
+	}
+
+	/**
+	 * Corrosion maps its rust-analyzer to TM4E's Rust content type, which loses the low-priority tie to this bundle's;
+	 * LSP4E starts the servers of every content type of a file, so binding another rust-analyzer would start two.
+	 */
+	@Test
+	public void aServerOnAnyContentTypeOfTheFileCounts() throws CoreException, IOException {
+		IContentTypeManager types = Platform.getContentTypeManager();
+		IContentType other = types.addContentType(OTHER_RUST, "Rust (another plug-in)",
+				types.getContentType(IContentTypeManager.CT_TEXT));
+		try {
+			other.addFileSpec("rs", IContentType.FILE_EXTENSION_SPEC);
+			IContentType first = types.findContentTypeFor("file.rs");
+			Assume.assumeFalse("the other content type is picked first", first.equals(other));
+			ILaunchConfiguration corrosion = DebugPlugin.getDefault().getLaunchManager()
+					.getLaunchConfigurationType(LanguageServerBinder.PROGRAM_TYPE)
+					.newInstance(null, LanguageServerBinder.NAME_PREFIX + "corrosion-test").doSave();
+			LanguageServersRegistry.getInstance().registerAssociation(other, corrosion, Set.of(ILaunchManager.RUN_MODE));
+
+			assertFalse(LanguageServerBinder.served(first));
+			assertEquals(BindOutcome.ALREADY_SERVED, new LanguageServerBinder().bind(RUST, command -> Optional.of(Path.of(command))));
+			assertFalse("no second server on the first content type", LanguageServerBinder.served(first));
+		} finally {
+			types.removeContentType(OTHER_RUST);
+		}
 	}
 
 	@Test
