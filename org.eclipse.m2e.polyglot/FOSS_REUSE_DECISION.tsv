@@ -1,0 +1,28 @@
+capability	donor	license	state	classification	contract_fit	gap
+java_project_config	hsoliwal/m2e-core org.eclipse.m2e.jdt (projectConfigurators)	EPL-2.0	active, in fork	direct_import	exists: JDT nature + classpath from the Maven model	none
+pom_editor_lsp	hsoliwal/m2e-core org.eclipse.m2e.editor.lemminx (lsp4e 0.18, lsp4j 0.21, LemMinX-Maven)	EPL-2.0	active, in fork	direct_import	exists: LSP4E client for pom.xml	none for pom.xml
+generic_language_lsp	eclipse-lsp4e/lsp4e	EPL-2.0	active 2026-11-10	wrap	LSP4E content-type -> language-server binding	map polyglot step languages to servers
+lsp_protocol	eclipse-lsp4j/lsp4j	EPL-2.0 OR BSD-3 (NOASSERTION in API)	active 2026-11-13	direct_import	protocol library; already a dependency	confirm the licence file before attributing
+c_cpp_project_config	maven-nar/m2e-nar	Apache-2.0	stale 2018-04-01	adapt	m2e configurator that sets the CDT nature from the NAR plugin	retarget from NAR plugin to polyglot cmake/meson/make steps; current CDT API
+c_cpp_build	eclipse-cdt/cdt core build (cmake, meson, makefile)	EPL-2.0	active 2026-11-16	wrap	CDT core build configurations for CMake/Meson/Make	none; configurator selects the build type
+c_cpp_lsp	eclipse-cdt/cdt-lsp (clangd)	EPL-2.0	active 2026-11-16	wrap	clangd via LSP4E	none
+rust_ide	RustDT/RustDT	none in API (EPL-1.0 in repo)	archived 2022-05-13	no_fit	archived; superseded by Corrosion	use Corrosion
+rust_project_config	eclipse-corrosion/corrosion	EPL-2.0	active 2026-11-13	wrap	cargo nature + rust-analyzer via LSP4E	configurator maps polyglot cargo steps to the Corrosion nature
+polyglot_task_model	hsoliwal/maven tools/m3-polyglot-maven-plugin (m3-build.tsv, mavenizer)	Apache-2.0	active, merged #115 #118	direct_import	declares tool steps per language	m2e configurator reads the steps and picks the nature
+groovy_gmavenplus_mapping	groovy/groovy-eclipse@7a6e0d8f extras/org.codehaus.groovy.m2eclipse/lifecycle-mapping-metadata.xml	EPL (no SPDX id)	active (2026-11-13)	no_fit (reference only)	maps gmavenplus [1.0,1.6) and [1.6,) to its JDT configurator; only present when Groovy-Eclipse is installed	org.eclipse.m2e.polyglot lifecycle-mapping-metadata.xml maps the same goals to org.eclipse.m2e.polyglot.languagePlugins, runsAfter org.codehaus.groovy.m2eclipse.configurator? (goal lists read from the donor; no text copied)
+kotlin_maven_mapping	Kotlin/kotlin-eclipse@20219777 kotlin-eclipse-maven/lifecycle-mapping-metadata.xml	Apache-2.0	inactive (2023-02-27)	no_fit (reference only)	maps kotlin-maven-plugin compile, test-compile to org.jetbrains.kotlin.maven.projectConfigurator	same configurator, runsAfter org.jetbrains.kotlin.maven.projectConfigurator?; adds kapt, test-kapt
+xml_maven_mapping	mojohaus/xml-maven-plugin@965e9d45 src/main/resources/META-INF/m2e/lifecycle-mapping-metadata.xml	Apache-2.0	active	direct_import (left in place)	the plug-in embeds execute for validate, transform, check-format	none: not mapped by the bundle, so the embedded mapping keeps working
+language_server_launchers	mason-org/mason-registry packages/*/package.yaml	Apache-2.0	active	adapt (names only)	bin names lemminx, groovy-language-server, kotlin-language-server, kotlin-lsp, phpactor, intelephense, cobol-language-support, elp, erlang_ls	language-servers.tsv server commands; no code or data copied
+xml_server	eclipse-lemminx/lemminx (run as a program)	EPL-2.0	active	wrap	stdio LSP server; Wild Web Developer already registers it when installed	server row xml lemminx
+groovy_server	GroovyLanguageServer/groovy-language-server (run as a program)	Apache-2.0	active	wrap	stdio LSP server	server row groovy
+kotlin_server	fwcd/kotlin-language-server; Kotlin/kotlin-lsp (run as programs)	MIT; Apache-2.0	deprecated upstream; active	wrap	stdio LSP servers; kotlin-lsp needs --stdio	server rows kotlin x2
+php_server	phpactor/phpactor; intelephense (run as programs)	MIT; closed source, free tier	active	wrap	stdio LSP servers; phpactor preferred for its licence	server rows php x2
+cobol_server	eclipse-che4z/che-che4z-lsp-for-cobol (run as a program)	EPL-2.0	active	wrap	stdio LSP server; asks its client for copybooks through custom requests that LSP4E does not answer	server row cobol
+erlang_server	WhatsApp/erlang-language-platform; erlang-ls/erlang_ls (run as programs)	Apache-2.0 OR MIT; Apache-2.0	active; archived	wrap	elp server and erlang_ls are stdio LSP servers	server rows erlang x2
+rust_server	rust-lang/rust-analyzer (run as a program)	MIT OR Apache-2.0	active	wrap	stdio LSP server; Corrosion registers it when installed	server row rust
+go_server	golang/tools gopls (run as a program)	BSD-3-Clause	active	wrap	stdio LSP server	server row go
+c_cpp_server	llvm/llvm-project clang-tools-extra/clangd (run as a program)	Apache-2.0 WITH LLVM-exception	active	wrap	stdio LSP server; cdt-lsp registers it when installed	server rows c, cpp
+js_ts_server	typescript-language-server/typescript-language-server (run as a program)	Apache-2.0 (parts MIT, copied from microsoft/vscode)	active	wrap	stdio LSP server, run with --stdio; Wild Web Developer bundles it	server rows javascript, typescript
+python_server	python-lsp/python-lsp-server pylsp (run as a program)	MIT	active	wrap	stdio LSP server	server row python
+csharp_server	razzmatazz/csharp-language-server csharp-ls (run as a program)	MIT	active	wrap	stdio LSP server; needs a .NET SDK	server row csharp
+swift_server	swiftlang/sourcekit-lsp (run as a program)	Apache-2.0 WITH Swift-exception	active	wrap	stdio LSP server, part of every Swift toolchain	server row swift

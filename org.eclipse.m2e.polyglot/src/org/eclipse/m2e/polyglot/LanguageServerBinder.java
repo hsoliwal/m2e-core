@@ -16,9 +16,11 @@ package org.eclipse.m2e.polyglot;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import org.eclipse.core.runtime.CoreException;
@@ -35,7 +37,8 @@ import org.eclipse.lsp4e.LanguageServersRegistry;
  * Registers a language server with LSP4E the way LSP4E's <i>Language Servers</i> preference page does: an External
  * Tools program launch configuration associated with a content type. A content type that any LSP4E server already
  * serves, from a plug-in or from the user, is left alone; so is another plug-in's content type when the language
- * yields to plug-ins. Of several alternative servers, the first whose command is found is registered.
+ * yields to plug-ins, and a language whose native IDE editor is installed. Of several alternative servers, the first
+ * whose command is found is registered.
  */
 final class LanguageServerBinder {
 
@@ -49,6 +52,15 @@ final class LanguageServerBinder {
 
 	/** The prefix of the content types this bundle declares. */
 	static final String OWN_CONTENT_TYPES = "org.eclipse.m2e.polyglot.";
+
+	/** The WTP XML editor bundle: it serves XML without LSP4E. */
+	static final String WTP_XML_UI = "org.eclipse.wst.xml.ui";
+
+	/**
+	 * Languages whose native IDE editor serves their files without LSP4E, with the editor's bundle. LSP4E connects every
+	 * text buffer, so a server bound next to such an editor would add its diagnostics to the editor's own.
+	 */
+	static final Map<String, String> NATIVE_EDITORS = Map.of("xml", WTP_XML_UI);
 
 	/** A server and where its command was found. */
 	record Located(LanguageServer server, Path executable) {
@@ -66,7 +78,7 @@ final class LanguageServerBinder {
 		if (served(binding.sampleFile())) {
 			return BindOutcome.ALREADY_SERVED;
 		}
-		if (binding.yieldsToPlugins() && !contentType.getId().startsWith(OWN_CONTENT_TYPES)) {
+		if (yieldsToPlugin(binding, contentType.getId(), bundle -> Platform.getBundle(bundle) != null)) {
 			return BindOutcome.IDE_PLUGIN;
 		}
 		Optional<Located> located = locate(binding, locator);
@@ -84,12 +96,29 @@ final class LanguageServerBinder {
 				.anyMatch(LanguageServerBinder::served);
 	}
 
-	/** True when an LSP4E server, from a launch configuration or a plug-in, serves exactly this content type. */
+	/** True when an LSP4E server, from a launch configuration or a plug-in, serves this content type. */
 	static boolean served(IContentType contentType) {
 		LanguageServersRegistry registry = LanguageServersRegistry.getInstance();
-		return Stream.concat(registry.getContentTypeToLSPLaunches().stream().map(entry -> entry.getKey()),
-				registry.getContentTypeToLSPExtensions().stream().map(entry -> entry.getKey()))
-				.anyMatch(contentType::equals);
+		return servedBy(contentType,
+				Stream.concat(registry.getContentTypeToLSPLaunches().stream().map(entry -> entry.getKey()),
+						registry.getContentTypeToLSPExtensions().stream().map(entry -> entry.getKey())));
+	}
+
+	/**
+	 * True when a server registered for one of the content types serves this one: registered for it or for one of its
+	 * base types, which is how LSP4E matches servers to a document.
+	 */
+	static boolean servedBy(IContentType contentType, Stream<IContentType> registered) {
+		return registered.anyMatch(contentType::isKindOf);
+	}
+
+	/**
+	 * True when an IDE plug-in keeps the language: another plug-in's content type claims the sample file of a language
+	 * that yields to plug-ins, or the language's {@link #NATIVE_EDITORS native editor} bundle is resolved.
+	 */
+	static boolean yieldsToPlugin(LanguageBinding binding, String contentTypeId, Predicate<String> resolved) {
+		return binding.yieldsToPlugins() && !contentTypeId.startsWith(OWN_CONTENT_TYPES)
+				|| Optional.ofNullable(NATIVE_EDITORS.get(binding.language())).filter(resolved).isPresent();
 	}
 
 	/** The first alternative whose command the locator finds. */

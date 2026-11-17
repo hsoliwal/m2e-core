@@ -20,7 +20,10 @@ enum BindOutcome {
 	BOUND,
 	/** An LSP4E server already serves the content type. */
 	ALREADY_SERVED,
-	/** The language yields to plug-ins, and another plug-in's content type claims the sample file. */
+	/**
+	 * The language yields to plug-ins and another plug-in's content type claims the sample file, or the language's native
+	 * IDE editor (WTP's XML editor for XML) is installed.
+	 */
 	IDE_PLUGIN,
 	/** Eclipse knows no content type for the sample file. */
 	NO_CONTENT_TYPE,
