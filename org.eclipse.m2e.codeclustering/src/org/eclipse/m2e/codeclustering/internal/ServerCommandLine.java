@@ -60,19 +60,29 @@ public final class ServerCommandLine {
     List<String> command = new ArrayList<>();
     command.add(java);
     command.addAll(options.vmArguments());
-    if(!options.profiles().isEmpty()) {
-      command.add(PROFILES_PROPERTY + options.profiles());
-    }
-    if(!options.servers().isEmpty()) {
-      command.add(SERVERS_PROPERTY + options.servers());
-    }
-    if(options.clang() && !options.clangExecutable().isEmpty()) {
-      command.add(CLANG_EXECUTABLE_PROPERTY + options.clangExecutable());
-    }
+    command.addAll(optionalProperties(options));
     command.add("-cp"); //$NON-NLS-1$
     command.add(classpath(classpath));
     command.add(ServerArtifacts.MAIN_CLASS);
     return List.copyOf(command);
+  }
+
+  /**
+   * Returns the server's system properties whose options are set, in the order profiles, servers, clang executable.
+   * The clang executable is passed only with the clang front end.
+   */
+  static List<String> optionalProperties(ServerOptions options) {
+    List<String> properties = new ArrayList<>();
+    if(!options.profiles().isEmpty()) {
+      properties.add(PROFILES_PROPERTY + options.profiles());
+    }
+    if(!options.servers().isEmpty()) {
+      properties.add(SERVERS_PROPERTY + options.servers());
+    }
+    if(options.clang() && !options.clangExecutable().isEmpty()) {
+      properties.add(CLANG_EXECUTABLE_PROPERTY + options.clangExecutable());
+    }
+    return properties;
   }
 
   /**
