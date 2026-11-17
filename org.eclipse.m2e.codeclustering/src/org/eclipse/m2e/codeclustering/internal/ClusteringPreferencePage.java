@@ -53,24 +53,4 @@ public final class ClusteringPreferencePage extends FieldEditorPreferencePage im
     addField(new StringFieldEditor(ServerOptions.CLASSPATH, Messages.ClusteringPreferencePage_classpath, parent));
   }
 
-  /**
-   * The version field accepts what {@link ServerArtifacts#version(String)} accepts.
-   */
-  private static final class VersionFieldEditor extends StringFieldEditor {
-
-    VersionFieldEditor(Composite parent) {
-      super(ServerOptions.VERSION, Messages.ClusteringPreferencePage_version, parent);
-    }
-
-    @Override
-    protected boolean doCheckState() {
-      try {
-        ServerArtifacts.version(getStringValue());
-        return true;
-      } catch(IllegalArgumentException ex) {
-        setErrorMessage(ex.getMessage());
-        return false;
-      }
-    }
-  }
 }

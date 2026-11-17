@@ -31,6 +31,13 @@ LSP4E skips a mapping whose content type is not installed.
   would otherwise be scanned twice and reported as duplicates of themselves.
 - Diagnostics use the marker type `org.eclipse.m2e.codeclustering.duplicate`, a subtype of
   `org.eclipse.lsp4e.diagnostic`.
+- Limitation: the workspace folders are fixed when the server starts. A Maven project that
+  is imported or opened later is not scanned, and a closed one keeps being scanned, until
+  the server restarts (close every mapped editor, or restart Eclipse). Folder change
+  notifications are a planned server feature.
+- XML, HTML, CSS and JSON files only get atoms through their language servers: set the
+  language cores to `wtp` (LemMinX and the web language servers on the PATH). Without it the
+  server starts for those files but reports nothing for them.
 
 ## Preferences (Maven > Code Clustering)
 
