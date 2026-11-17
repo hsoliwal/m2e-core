@@ -95,6 +95,9 @@ mapping would override.
   plug-in claims the files, it keeps them, even without LSP4E (outcome `IDE_PLUGIN`).
 - XML uses the platform XML content type. Where Wild Web Developer is installed (the m2e LemMinX
   feature requires it), LemMinX already serves XML and nothing is added.
+- C# follows the same rule. With aCute installed, its `org.eclipse.acute.csharp` content type and
+  Roslyn server keep `.cs` files; `csharp-ls` is bound only without aCute.
+  [CSHARP-ACUTE-PLAN.md](CSHARP-ACUTE-PLAN.md) records what Maven does for .NET folders and the next steps.
 - A server that is not on `PATH` is logged and skipped. Nothing is downloaded.
 - Java stays with `org.eclipse.m2e.jdt`. Gradle, Ant and Bazel tools map to no server.
 
