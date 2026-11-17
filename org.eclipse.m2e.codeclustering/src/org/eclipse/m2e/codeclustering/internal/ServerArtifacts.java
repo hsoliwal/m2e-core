@@ -13,6 +13,7 @@ package org.eclipse.m2e.codeclustering.internal;
 
 import java.util.List;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 
 /**
@@ -28,6 +29,9 @@ public final class ServerArtifacts {
   public static final String SERVER_ARTIFACT_ID = "maven-code-clustering-lsp"; //$NON-NLS-1$
 
   public static final String PLUGIN_ARTIFACT_ID = "maven-code-clustering-plugin"; //$NON-NLS-1$
+
+  /** The clang syntax tree front end: on the server class path, it atomizes C-family files through clang. */
+  public static final String CLANG_ARTIFACT_ID = "maven-code-clustering-clang"; //$NON-NLS-1$
 
   public static final String MAIN_CLASS = "org.apache.maven.plugins.clustering.lsp.ClusteringServerMain"; //$NON-NLS-1$
 
@@ -46,8 +50,19 @@ public final class ServerArtifacts {
    * @throws IllegalArgumentException if the preference is not a single Maven version
    */
   public static List<String> coordinates(String version) {
+    return coordinates(version, false);
+  }
+
+  /**
+   * Returns the resolution roots of {@link #coordinates(String)}, followed by the clang front end when {@code clang}
+   * is true.
+   *
+   * @throws IllegalArgumentException if the preference is not a single Maven version
+   */
+  public static List<String> coordinates(String version, boolean clang) {
     String v = version(version);
-    return List.of(coordinate(SERVER_ARTIFACT_ID, v), coordinate(PLUGIN_ARTIFACT_ID, v));
+    Stream<String> roots = Stream.of(coordinate(SERVER_ARTIFACT_ID, v), coordinate(PLUGIN_ARTIFACT_ID, v));
+    return (clang ? Stream.concat(roots, Stream.of(coordinate(CLANG_ARTIFACT_ID, v))) : roots).toList();
   }
 
   /**

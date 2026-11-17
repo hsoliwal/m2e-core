@@ -70,7 +70,8 @@ public class ClusteringConnectionProvider extends ProcessStreamConnectionProvide
       return options.classpath().stream().map(File::new).toList();
     }
     try {
-      return RESOLVER.resolve(ServerArtifacts.coordinates(options.version()), new NullProgressMonitor());
+      return RESOLVER.resolve(ServerArtifacts.coordinates(options.version(), options.clang()),
+          new NullProgressMonitor());
     } catch(CoreException | IllegalArgumentException ex) {
       String message = "The code-clustering language server is not started: " + ex.getMessage() //$NON-NLS-1$
           + ". Install " + ServerArtifacts.SERVER_ARTIFACT_ID + " and " + ServerArtifacts.PLUGIN_ARTIFACT_ID //$NON-NLS-1$ //$NON-NLS-2$

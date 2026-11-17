@@ -29,6 +29,8 @@ public final class ServerCommandLine {
 
   static final String SERVERS_PROPERTY = "-Dclustering.lsp.servers="; //$NON-NLS-1$
 
+  static final String CLANG_EXECUTABLE_PROPERTY = "-Dclustering.clang.executable="; //$NON-NLS-1$
+
   private ServerCommandLine() {
   }
 
@@ -46,8 +48,8 @@ public final class ServerCommandLine {
   }
 
   /**
-   * Returns {@code java [vm arguments] [-Dclustering.lsp.profiles=..] [-Dclustering.lsp.servers=..] -cp <class path>
-   * ClusteringServerMain}.
+   * Returns {@code java [vm arguments] [-Dclustering.lsp.profiles=..] [-Dclustering.lsp.servers=..]
+   * [-Dclustering.clang.executable=..] -cp <class path> ClusteringServerMain}.
    *
    * @throws IllegalArgumentException if the class path is empty
    */
@@ -63,6 +65,9 @@ public final class ServerCommandLine {
     }
     if(!options.servers().isEmpty()) {
       command.add(SERVERS_PROPERTY + options.servers());
+    }
+    if(options.clang() && !options.clangExecutable().isEmpty()) {
+      command.add(CLANG_EXECUTABLE_PROPERTY + options.clangExecutable());
     }
     command.add("-cp"); //$NON-NLS-1$
     command.add(classpath(classpath));

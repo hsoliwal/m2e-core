@@ -48,6 +48,9 @@ public final class ClusteringPreferencePage extends FieldEditorPreferencePage im
     addField(minTokens);
     addField(new StringFieldEditor(ServerOptions.PROFILES, Messages.ClusteringPreferencePage_profiles, parent));
     addField(new StringFieldEditor(ServerOptions.SERVERS, Messages.ClusteringPreferencePage_servers, parent));
+    addField(new BooleanFieldEditor(ServerOptions.CLANG, Messages.ClusteringPreferencePage_clang, parent));
+    addField(new StringFieldEditor(ServerOptions.CLANG_EXECUTABLE, Messages.ClusteringPreferencePage_clangExecutable,
+        parent));
     addField(new StringFieldEditor(ServerOptions.JAVA, Messages.ClusteringPreferencePage_java, parent));
     addField(new StringFieldEditor(ServerOptions.VM_ARGUMENTS, Messages.ClusteringPreferencePage_vmArguments, parent));
     addField(new StringFieldEditor(ServerOptions.CLASSPATH, Messages.ClusteringPreferencePage_classpath, parent));
