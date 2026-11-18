@@ -46,6 +46,8 @@ import org.eclipse.m2e.core.project.IProjectConfiguration;
 import org.eclipse.m2e.core.project.IProjectConfigurationManager;
 import org.eclipse.m2e.core.project.configurator.AbstractBuildParticipant;
 import org.eclipse.m2e.core.project.configurator.M3EclipseBuildContext;
+import org.eclipse.m2e.core.project.configurator.M3EclipseBuildHandoff;
+import org.eclipse.m2e.core.project.configurator.M3WorkspaceDelta;
 import org.eclipse.m2e.core.project.configurator.M3WorkspaceDeltaBuildParticipant;
 import org.eclipse.m2e.core.project.configurator.ILifecycleMapping;
 import org.eclipse.m2e.core.project.configurator.MojoExecutionKey;
@@ -177,17 +179,26 @@ public class MavenBuilder extends IncrementalProjectBuilder implements DeltaProv
       boolean captureM3Context = Boolean.getBoolean(M3WorkspaceDeltaBuildParticipant.ENABLE_PROPERTY);
       if(captureM3Context) {
         projectFacade.setSessionProperty(M3EclipseBuildContext.PROPERTY, null);
+        projectFacade.setSessionProperty(M3EclipseBuildHandoff.PROPERTY, null);
       }
       Set<IProject> dependencies = builder.build(context.getSession(), projectFacade, kind, args,
           buildParticipantsByMojoExecutionKey, monitor);
       if(captureM3Context) {
         try {
-          projectFacade.setSessionProperty(M3EclipseBuildContext.PROPERTY,
-              M3EclipseBuildContext.capture(projectFacade.getProject(),
-                  MavenBuilder.this.getBuildConfig(), monitor));
+          M3EclipseBuildContext.Snapshot ownerContext = M3EclipseBuildContext.capture(
+              projectFacade.getProject(), MavenBuilder.this.getBuildConfig(), monitor);
+          projectFacade.setSessionProperty(M3EclipseBuildContext.PROPERTY, ownerContext);
+          Object originalDelta = projectFacade.getSessionProperty(M3WorkspaceDeltaBuildParticipant.PROPERTY);
+          if(originalDelta instanceof M3WorkspaceDelta.Snapshot delta) {
+            // Both facts now belong to the same original MavenBuilder invocation.
+            // They are advisory; they cannot authorize compilation or goal skipping.
+            projectFacade.setSessionProperty(M3EclipseBuildHandoff.PROPERTY,
+                M3EclipseBuildHandoff.bind(ownerContext, delta));
+          }
         } catch(CoreException | IllegalArgumentException e) {
+          projectFacade.setSessionProperty(M3EclipseBuildHandoff.PROPERTY, null);
           // Read-only optional evidence cannot change the original Maven build.
-          log.debug("M3 Eclipse build configuration capture unavailable", e);
+          log.debug("M3 Eclipse owner handoff unavailable", e);
         }
       }
 
