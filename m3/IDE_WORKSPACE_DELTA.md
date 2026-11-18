@@ -83,3 +83,59 @@ It never authorizes Maven goal skipping.
 A separate Visual Studio adapter can invoke Maven's normal lifecycle via an
 explicit MSBuild target or Open Folder `tasks.vs.json`. This m2e helper is not a
 VSIX, nor an IDE plugin installation.
+
+
+## Separate Eclipse build-configuration identity (all language builders)
+
+\`M3EclipseBuildContext\` is a **different**, versioned source-owner packet:
+\`M3-ECLIPSE-BUILD-CONTEXT-V1\`. It reports the *actual selected*
+\`IBuildConfiguration\`, the currently active configuration, all declared
+Eclipse configurations, original \`ICommand\` builder names and project
+nature IDs in original order. An Eclipse builder may run \`Debug\` while the
+project's active selection is \`Release\`; the two must **not** be conflated.
+
+The original \`MavenBuilder\` records this optional context only **after**
+\`MavenBuilderImpl.build\` returns successfully when the pre-existing
+\`-Dm3.ide.delta.capture=true\` switch is enabled. It clears the preceding
+session property before the build, does not create another Eclipse builder,
+and does not change the native Maven/JDT/CDT build results. It does not
+capture build contexts on unrelated Eclipse builders that m2e does not own.
+
+A separately trusted caller may explicitly export these facts, never
+automatically from an IDE import:
+
+\`\`\`java
+var context = (M3EclipseBuildContext.Snapshot)
+    facade.getSessionProperty(M3EclipseBuildContext.PROPERTY);
+if (context != null) {
+    M3EclipseBuildContext.writeSnapshot(context,
+        facade.getProject().getLocation().toFile().toPath(),
+        Path.of("target/ide/build-context.ide"));
+}
+\`\`\`
+
+Create the \`target/ide\` parent first. The exporter refuses symlinks,
+out-of-project paths, conflicting bytes or overwrites. It is idempotent for
+unchanged bytes. The host must choose a unique file for each generation and
+exclude derived packets from recursive source notifications.
+
+The wire format is strict UTF-8, LF-only, no BOM, with canonical unpadded
+Base64URL values. Default Eclipse configuration names are **empty strings**
+and must not be replaced with a guessed \`default\` or CDT configuration.
+The document contains:
+\`\`\`text
+M3-ECLIPSE-BUILD-CONTEXT-V1
+provider\teclipse.m2e
+project64\t<base64url-UTF8>
+selected64\t<base64url-UTF8-or-empty>
+active64\t<base64url-UTF8-or-empty>
+configuration64\t<base64url-UTF8-or-empty>  (repeated in Eclipse order)
+builder64\t<base64url-UTF8>                  (repeated in builder order)
+nature64\t<base64url-UTF8>                   (repeated in nature order)
+\`\`\`
+
+This packet carries no source hashes, compiler arguments, binaries, toolchain
+or classpath fingerprints and no build-success certificate. It must not be
+treated as a cache-admission or goal-skip decision. A distinct Maven-owned
+reader and Gradle proxy can inspect its identity for diagnostics; their
+incremental engine must bind **separately verified** full build generations.
