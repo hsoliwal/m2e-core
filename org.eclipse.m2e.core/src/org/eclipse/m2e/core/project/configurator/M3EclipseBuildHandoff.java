@@ -55,6 +55,19 @@ public final class M3EclipseBuildHandoff {
       if (delta.changes().size() > M3WorkspaceDelta.MAX_CHANGES) {
         throw new IllegalArgumentException("Eclipse delta exceeds original source-owner budget");
       }
+      String preceding = null;
+      for (M3WorkspaceDelta.Change change : delta.changes()) {
+        if (preceding != null && preceding.compareTo(change.projectRelativePath()) >= 0) {
+          throw new IllegalArgumentException("unsorted or duplicated Eclipse source deltas");
+        }
+        preceding = change.projectRelativePath();
+      }
+      if (delta.buildKind() != IncrementalProjectBuilder.FULL_BUILD
+          && delta.buildKind() != IncrementalProjectBuilder.CLEAN_BUILD
+          && delta.buildKind() != IncrementalProjectBuilder.INCREMENTAL_BUILD
+          && delta.buildKind() != IncrementalProjectBuilder.AUTO_BUILD) {
+        throw new IllegalArgumentException("unknown Eclipse build invocation kind");
+      }
       // Full and clean builds do not have a complete incremental delta.
       if ((delta.buildKind() == IncrementalProjectBuilder.FULL_BUILD
           || delta.buildKind() == IncrementalProjectBuilder.CLEAN_BUILD) && delta.deltaComplete()) {
