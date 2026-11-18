@@ -193,6 +193,7 @@ public final class M3JdtCompilerFacts {
       number(md, entry.getContentKind());
       number(md, entry.isExported() ? 1 : 0);
       number(md, entry.isTest() ? 1 : 0);
+      number(md, entry.combineAccessRules() ? 1 : 0);
       frame(md, path(entry.getPath()));
       frame(md, path(entry.getOutputLocation()));
       frame(md, path(entry.getSourceAttachmentPath()));
@@ -217,7 +218,13 @@ public final class M3JdtCompilerFacts {
   }
 
   private static void patterns(MessageDigest digest, IPath[] entries) {
-    Objects.requireNonNull(entries, "JDT source patterns");
+    // JDT's IClasspathEntry allows null patterns for entry kinds where
+    // filtering does not apply (notably libraries and containers). This is
+    // different from an explicitly empty pattern list and must be encoded.
+    if (entries == null) {
+      number(digest, -1);
+      return;
+    }
     number(digest, entries.length);
     for (IPath path : entries) frame(digest, path(path));
   }
