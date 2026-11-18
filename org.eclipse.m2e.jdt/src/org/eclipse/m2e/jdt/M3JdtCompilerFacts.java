@@ -193,6 +193,7 @@ public final class M3JdtCompilerFacts {
       number(md, entry.getContentKind());
       number(md, entry.isExported() ? 1 : 0);
       number(md, entry.isTest() ? 1 : 0);
+      number(md, entry.isWithoutTestCode() ? 1 : 0);
       number(md, entry.combineAccessRules() ? 1 : 0);
       frame(md, path(entry.getPath()));
       frame(md, path(entry.getOutputLocation()));
