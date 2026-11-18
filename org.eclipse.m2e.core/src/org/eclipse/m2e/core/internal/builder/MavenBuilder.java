@@ -45,6 +45,8 @@ import org.eclipse.m2e.core.project.IMavenProjectFacade;
 import org.eclipse.m2e.core.project.IProjectConfiguration;
 import org.eclipse.m2e.core.project.IProjectConfigurationManager;
 import org.eclipse.m2e.core.project.configurator.AbstractBuildParticipant;
+import org.eclipse.m2e.core.project.configurator.M3EclipseBuildContext;
+import org.eclipse.m2e.core.project.configurator.M3WorkspaceDeltaBuildParticipant;
 import org.eclipse.m2e.core.project.configurator.ILifecycleMapping;
 import org.eclipse.m2e.core.project.configurator.MojoExecutionKey;
 
@@ -170,8 +172,24 @@ public class MavenBuilder extends IncrementalProjectBuilder implements DeltaProv
         Map<MojoExecutionKey, List<AbstractBuildParticipant>> buildParticipantsByMojoExecutionKey, int kind,
         Map<String, String> args, IProgressMonitor monitor) throws CoreException {
 
+      // The real Eclipse builder owns build-configuration selection. Reset
+      // optional advice before execution; failed builds retain no stale context.
+      boolean captureM3Context = Boolean.getBoolean(M3WorkspaceDeltaBuildParticipant.ENABLE_PROPERTY);
+      if(captureM3Context) {
+        projectFacade.setSessionProperty(M3EclipseBuildContext.PROPERTY, null);
+      }
       Set<IProject> dependencies = builder.build(context.getSession(), projectFacade, kind, args,
           buildParticipantsByMojoExecutionKey, monitor);
+      if(captureM3Context) {
+        try {
+          projectFacade.setSessionProperty(M3EclipseBuildContext.PROPERTY,
+              M3EclipseBuildContext.capture(projectFacade.getProject(),
+                  MavenBuilder.this.getBuildConfig(), monitor));
+        } catch(CoreException | IllegalArgumentException e) {
+          // Read-only optional evidence cannot change the original Maven build.
+          log.debug("M3 Eclipse build configuration capture unavailable", e);
+        }
+      }
 
       if(dependencies.isEmpty()) {
         return null;
