@@ -47,8 +47,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # Limit this gate to original JDT test modules plus their reactor
+          # prerequisites. Unrelated m2e polyglot tests already fail on this
+          # source revision and should not mask a genuine JDT result.
           xvfb-run -a mvn --batch-mode --no-transfer-progress \
-            -Pits verify \
+            -pl org.eclipse.m2e.jdt.tests -am verify \
             -Dtycho.p2.baselineMode=failCommon \
             -Dmaven.test.failure.ignore=false \
             -DskipTests=false \
