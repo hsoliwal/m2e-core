@@ -16,6 +16,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -48,6 +49,25 @@ public class M3EclipseBuildHandoffTest {
     assertArrayEquals(handoff.toExchangeBytes(), handoff.toExchangeBytes());
     assertTrue(handoff.invocationId().matches("[0-9a-f-]{36}"));
     assertFalse(handoff.invocationId().equals(M3EclipseBuildHandoff.bind(context, delta).invocationId()));
+  }
+
+  @Test
+  public void originalEclipseBytesEqualTheCanonicalMavenDecoderFixture() throws Exception {
+    var context = new M3EclipseBuildContext.Snapshot("Mixed", "Debug", "Release",
+        List.of("Debug", "Release"),
+        List.of("org.eclipse.jdt.core.javabuilder",
+            "org.eclipse.cdt.managedbuilder.core.genmakebuilder"),
+        List.of("vendor.rustdt.nature"));
+    var handoff = new M3EclipseBuildHandoff.Snapshot(
+        "9ab5cc33-33bd-4f33-8aa9-6c3c11223344",
+        context, delta("Mixed", IncrementalProjectBuilder.INCREMENTAL_BUILD, true));
+    try(InputStream in = M3EclipseBuildHandoffTest.class.getResourceAsStream(
+        "/resources/m3-eclipse-build-handoff-v1.fixture")) {
+      if(in == null) {
+        fail("canonical Eclipse/Maven handoff fixture not included in PDE test bundle");
+      }
+      assertArrayEquals(in.readAllBytes(), handoff.toExchangeBytes());
+    }
   }
 
   @Test
