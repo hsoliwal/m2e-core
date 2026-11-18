@@ -78,7 +78,7 @@ public class M3EclipseBuildContextTest {
         List.of("Debug"), List.of(), List.of()));
     rejects(() -> new M3EclipseBuildContext.Snapshot("P", "Debug", "Debug",
         List.of("Debug", "Debug"), List.of(), List.of()));
-    rejects(() -> new M3EclipseBuildContext.Snapshot("P", "Bad\ud800", "Debug",
+    rejects(() -> new M3EclipseBuildContext.Snapshot("P", "Bad" + (char) 0xD800, "Debug",
         List.of("Debug"), List.of(), List.of()));
     IProject[] ref = new IProject[1];
     IBuildConfiguration foreign = proxy(IBuildConfiguration.class, Map.of(
