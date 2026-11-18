@@ -16,7 +16,11 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Comparator;
 import java.util.List;
 
 import org.eclipse.core.resources.IncrementalProjectBuilder;
@@ -61,6 +65,45 @@ public class M3JdtCompilerFactsTest extends AbstractMavenProjectTestCase {
           original.optionsSha256(), changed.optionsSha256());
     } finally {
       project.setOption(option, old);
+    }
+  }
+
+  @Test
+  public void explicitJdtFactsExportIsIdempotentButNeverReplacesAnInvocation() throws Exception {
+    IJavaProject javaProject = importResourceProject("/projects/compilerSettings/pom.xml");
+    var handoff = handoff(javaProject.getProject().getName());
+    var original = M3JdtCompilerFacts.capture(javaProject, handoff, monitor);
+    Path root = Files.createTempDirectory("m3-original-jdt-facts-");
+    try {
+      Files.createDirectories(root.resolve("target/ide"));
+      Path location = Path.of("target/ide/jdt-compiler-facts.ide");
+      Path first = M3JdtCompilerFacts.writeSnapshot(original, root, location);
+      assertArrayEquals(original.toExchangeBytes(), Files.readAllBytes(first));
+      assertEquals(first, M3JdtCompilerFacts.writeSnapshot(original, root, location));
+
+      var conflicting = new M3JdtCompilerFacts.Snapshot(
+          original.project(), "c111dc33-33bd-4f33-8aa9-6c3c11223344",
+          original.selected(), original.outputLocation(),
+          original.rawSha256(), original.resolvedSha256(),
+          original.optionsSha256(), original.rawCount(), original.resolvedCount());
+      try {
+        M3JdtCompilerFacts.writeSnapshot(conflicting, root, location);
+        fail("different JDT invocation replaced the original packet");
+      } catch (IOException expected) {
+        assertArrayEquals(original.toExchangeBytes(), Files.readAllBytes(first));
+      }
+      try {
+        M3JdtCompilerFacts.writeSnapshot(original, root, Path.of("../elsewhere.ide"));
+        fail("JDT compiler evidence escaped its project");
+      } catch (IOException expected) {
+        // Original owner retains project-local file custody.
+      }
+    } finally {
+      try (var files = Files.walk(root)) {
+        for (Path file : files.sorted(Comparator.reverseOrder()).toList()) {
+          Files.deleteIfExists(file);
+        }
+      }
     }
   }
 
