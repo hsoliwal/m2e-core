@@ -9,7 +9,13 @@
  *******************************************************************************/
 package org.eclipse.m2e.core.project.configurator;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashSet;
@@ -120,6 +126,45 @@ public final class M3EclipseBuildContext {
     checkCanceled(monitor);
     return new Snapshot(name, selected.getName(), active.getName(),
         configs, builders, natures);
+  }
+
+  /**
+   * Explicit export only. The Eclipse source owner retains responsibility for
+   * selecting a generation-specific path and excluding derived packets from
+   * recursive build notifications. Existing bytes are never overwritten.
+   */
+  public static Path writeSnapshot(Snapshot snapshot, Path projectRoot, Path packetFile) throws IOException {
+    Objects.requireNonNull(snapshot, "snapshot");
+    Path root = Objects.requireNonNull(projectRoot, "projectRoot").toRealPath();
+    Path requested = Objects.requireNonNull(packetFile, "packetFile");
+    Path file = (requested.isAbsolute() ? requested : root.resolve(requested)).normalize();
+    if (!file.startsWith(root) || file.equals(root)) {
+      throw new IOException("Eclipse context destination must be project-local");
+    }
+    Path cursor = root;
+    for (Path part : root.relativize(file)) {
+      cursor = cursor.resolve(part);
+      if (Files.isSymbolicLink(cursor)) {
+        throw new IOException("Eclipse context destination traverses symlinks");
+      }
+    }
+    if (!Files.isDirectory(file.getParent(), LinkOption.NOFOLLOW_LINKS)) {
+      throw new IOException("Eclipse context parent must exist");
+    }
+    byte[] expected = snapshot.toExchangeBytes();
+    if (Files.exists(file, LinkOption.NOFOLLOW_LINKS)) {
+      if (!Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS)
+          || Files.size(file) != expected.length) {
+        throw new IOException("Eclipse context destination already exists");
+      }
+      if (Arrays.equals(Files.readAllBytes(file), expected)) {
+        return file;
+      }
+      throw new IOException("conflicting Eclipse context destination");
+    }
+    Files.write(file, expected, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE,
+        LinkOption.NOFOLLOW_LINKS);
+    return file;
   }
 
   private static void checkCanceled(IProgressMonitor monitor) {
