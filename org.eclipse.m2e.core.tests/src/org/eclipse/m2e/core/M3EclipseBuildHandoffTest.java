@@ -92,6 +92,30 @@ public class M3EclipseBuildHandoffTest {
   }
 
   @Test
+  public void refusesUnsortedAndDuplicateSourceOwnerDeltas() {
+    var wrong = new M3WorkspaceDelta.Snapshot("P",
+        IncrementalProjectBuilder.INCREMENTAL_BUILD, true,
+        List.of(new M3WorkspaceDelta.Change("src/B.java", M3WorkspaceDelta.Kind.MODIFIED),
+            new M3WorkspaceDelta.Change("src/A.java", M3WorkspaceDelta.Kind.ADDED)));
+    try {
+      M3EclipseBuildHandoff.bind(context("P"), wrong);
+      fail("unsorted owner changes accepted");
+    } catch(IllegalArgumentException expected) {
+      // A malformed source owner can never publish a complete handoff.
+    }
+    var duplicate = new M3WorkspaceDelta.Snapshot("P",
+        IncrementalProjectBuilder.INCREMENTAL_BUILD, true,
+        List.of(new M3WorkspaceDelta.Change("src/A.java", M3WorkspaceDelta.Kind.ADDED),
+            new M3WorkspaceDelta.Change("src/A.java", M3WorkspaceDelta.Kind.MODIFIED)));
+    try {
+      M3EclipseBuildHandoff.bind(context("P"), duplicate);
+      fail("duplicate owner paths accepted");
+    } catch(IllegalArgumentException expected) {
+      // Each project-relative source path has one unambiguous reported change.
+    }
+  }
+
+  @Test
   public void explicitExportIsIdempotentAndNeverOverwritesDifferentInvocation() throws Exception {
     Path dir = Files.createTempDirectory("m3-eclipse-handoff-owner-");
     try {
