@@ -1,0 +1,69 @@
+# SPDX-FileCopyrightText: 2026 Contributors to the Synexia Project
+# SPDX-License-Identifier: EPL-2.0
+name: M3 JDT original compiler facts PDE acceptance
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'org.eclipse.m2e.jdt/**'
+      - 'org.eclipse.m2e.jdt.tests/**'
+      - 'org.eclipse.m2e.core/src/org/eclipse/m2e/core/project/configurator/M3EclipseBuildHandoff.java'
+      - 'm3/tools/M3JdtTestReceiptMain.java'
+      - '.github/workflows/m3-jdt-compiler-facts.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'org.eclipse.m2e.jdt/**'
+      - 'org.eclipse.m2e.jdt.tests/**'
+      - 'm3/tools/M3JdtTestReceiptMain.java'
+      - '.github/workflows/m3-jdt-compiler-facts.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-jdt-facts:
+    name: Native Eclipse JDT / Tycho (JDK 21)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 85
+    steps:
+      - name: Checkout original m2e source and submodules
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: recursive
+      - name: Use the original Eclipse JDT required Java 21 runtime
+        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Install compatible Maven for original Tycho reactor
+        uses: stCarolas/setup-maven@12eb41b233df95d49b0c11fc1b5bc8312e5d4ce0 # v5.1
+        with:
+          maven-version: 3.10.0
+      - name: Build and execute original JDT and PDE tests without failure-ignore
+        shell: bash
+        run: |
+          set -euo pipefail
+          xvfb-run -a mvn --batch-mode --no-transfer-progress \
+            -Pits verify \
+            -Dtycho.p2.baselineMode=failCommon \
+            -Dmaven.test.failure.ignore=false \
+            -DskipTests=false \
+            -Dtycho.surefire.deleteWorkDir=true
+      - name: Enforce all four original M3JdtCompilerFactsTest cases passed and none skipped
+        run: |
+          java m3/tools/M3JdtTestReceiptMain.java \
+            org.eclipse.m2e.jdt.tests/target/surefire-reports
+      - name: Preserve original PDE/JDT test evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: original-m2e-jdt-compiler-facts-jdk21
+          path: |
+            org.eclipse.m2e.jdt.tests/target/surefire-reports/**
+            org.eclipse.m2e.jdt.tests/target/work/data/**
+          if-no-files-found: ignore
+          retention-days: 14
