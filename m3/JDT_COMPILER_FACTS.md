@@ -77,3 +77,27 @@ idempotence, conflicting generations and out-of-project refusal.
 Maven's offline codec tests and Gradle's pinned-proxy tests remain
 separate. Real PDE/OSGi runtime tests must pass before declaring
 this feature fully qualified.
+
+## Original PDE/Tycho acceptance gate
+
+`.github/workflows/m3-jdt-compiler-facts.yml` runs the original m2e
+reactor under Eclipse's Java 21 requirement with Xvfb and the existing
+Tycho UI harness. Unlike the general m2e workflow, it sets
+`maven.test.failure.ignore=false` and does not permit an ignored
+compiler-facts test failure.
+
+After the original Tycho verification, the standalone Java 21
+`m3/tools/M3JdtTestReceiptMain.java` reads the real JUnit XML in
+`org.eclipse.m2e.jdt.tests/target/surefire-reports`. It requires
+exactly the four original `M3JdtCompilerFactsTest` cases to have run
+without any `<failure>`, `<error>` or `<skipped>` markers, rejects
+duplicate/unexpected cases, rejects missing or linked XML files and
+uses secure XML parsing (no DTD or external entities). A green Maven
+invocation without those actual reports **fails** the acceptance gate.
+
+An offline Java 21 smoke check of the verifier compiled cleanly with
+`javac --release 21 -Xlint:all -Werror`, accepted a valid four-case
+synthetic report and rejected synthetic skipped, failed and missing
+cases. This confirms only the gate logic, not Eclipse runtime
+qualification. The original PDE/Tycho suite must execute successfully
+before marking the cross-fork JDT feature fully qualified.
