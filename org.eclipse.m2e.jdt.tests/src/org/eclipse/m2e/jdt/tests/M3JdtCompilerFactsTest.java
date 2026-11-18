@@ -108,6 +108,21 @@ public class M3JdtCompilerFactsTest extends AbstractMavenProjectTestCase {
   }
 
   @Test
+  public void canonicalOriginalJdtPacketMatchesMavenConsumerFixture() throws Exception {
+    var facts = new M3JdtCompilerFacts.Snapshot(
+        "Mixed", "9ab5cc33-33bd-4f33-8aa9-6c3c11223344", "Debug",
+        "/Mixed/target/classes", "a".repeat(64), "b".repeat(64),
+        "c".repeat(64), 3, 5);
+    try (var fixture = M3JdtCompilerFactsTest.class.getResourceAsStream(
+        "/projects/m3-jdt-compiler-facts-v1.fixture")) {
+      if (fixture == null) {
+        fail("original JDT facts fixture is missing from the PDE test bundle");
+      }
+      assertArrayEquals(fixture.readAllBytes(), facts.toExchangeBytes());
+    }
+  }
+
+  @Test
   public void refusesForeignInvocationAndHonorsEclipseCancellation() throws Exception {
     IJavaProject project = importResourceProject("/projects/compilerSettings/pom.xml");
     try {
