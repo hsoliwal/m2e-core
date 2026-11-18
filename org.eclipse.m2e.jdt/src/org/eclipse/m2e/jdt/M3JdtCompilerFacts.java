@@ -9,10 +9,16 @@
  *******************************************************************************/
 package org.eclipse.m2e.jdt;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
@@ -137,6 +143,44 @@ public final class M3JdtCompilerFacts {
         handoff.context().selectedConfiguration(), output,
         HexFormat.of().formatHex(rawHash), HexFormat.of().formatHex(resolvedHash),
         HexFormat.of().formatHex(opts.digest()), raw.length, resolved.length);
+  }
+
+  /**
+   * Explicit project-local export of this original JDT snapshot, not a build
+   * side effect. A caller must already hold the matching Eclipse handoff and
+   * choose a fresh packet path. Existing different bytes are never overwritten.
+   */
+  public static Path writeSnapshot(Snapshot snapshot, Path projectRoot, Path destination)
+      throws IOException {
+    Objects.requireNonNull(snapshot, "snapshot");
+    Path root = Objects.requireNonNull(projectRoot, "projectRoot").toRealPath();
+    Path selected = Objects.requireNonNull(destination, "destination");
+    Path file = (selected.isAbsolute() ? selected : root.resolve(selected)).normalize();
+    if (!file.startsWith(root) || file.equals(root)) {
+      throw new IOException("JDT compiler facts must remain inside original project");
+    }
+    Path cursor = root;
+    for (Path part : root.relativize(file)) {
+      cursor = cursor.resolve(part);
+      if (Files.isSymbolicLink(cursor)) {
+        throw new IOException("JDT compiler facts destination contains a symbolic link");
+      }
+    }
+    if (!Files.isDirectory(file.getParent(), LinkOption.NOFOLLOW_LINKS)) {
+      throw new IOException("JDT facts output parent directory must already exist");
+    }
+    byte[] original = snapshot.toExchangeBytes();
+    if (Files.exists(file, LinkOption.NOFOLLOW_LINKS)) {
+      if (!Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS)
+          || Files.size(file) != original.length
+          || !Arrays.equals(Files.readAllBytes(file), original)) {
+        throw new IOException("refusing conflicting JDT compiler facts packet");
+      }
+      return file;
+    }
+    Files.write(file, original, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE,
+        LinkOption.NOFOLLOW_LINKS);
+    return file;
   }
 
   private static byte[] classpathDigest(IClasspathEntry[] entries, String domain) {
