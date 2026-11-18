@@ -139,3 +139,66 @@ or classpath fingerprints and no build-success certificate. It must not be
 treated as a cache-admission or goal-skip decision. A distinct Maven-owned
 reader and Gradle proxy can inspect its identity for diagnostics; their
 incremental engine must bind **separately verified** full build generations.
+
+
+## Single-invocation cross-language handoff (M3-ECLIPSE-BUILD-HANDOFF-V1)
+
+The original m2e \`MavenBuilder\`, under the **existing explicit**
+\`-Dm3.ide.delta.capture=true\` option, now clears the previous handoff at
+the start of each build. Only after its original build returns, and only if
+both original facts exist, it creates an immutable
+\`M3EclipseBuildHandoff.Snapshot\` in the facade's transient session property
+\`M3EclipseBuildHandoff.PROPERTY\`.
+
+The record couples the selected \`IBuildConfiguration\` and the original
+\`IResourceDelta\` from that **same m2e builder invocation**, without
+introducing a second compiler, resource watcher, project reconciler, or
+scheduler. Its UUID identifies an individual capture but is not an
+authentication certificate, stable cache key, or successful output receipt.
+A full/clean/unknown delta never claims complete incremental coverage.
+
+A caller may export it explicitly:
+
+\`\`\`java
+var handoff = (M3EclipseBuildHandoff.Snapshot)
+    facade.getSessionProperty(M3EclipseBuildHandoff.PROPERTY);
+if (handoff != null) {
+    M3EclipseBuildHandoff.writeSnapshot(handoff,
+        facade.getProject().getLocation().toFile().toPath(),
+        Path.of("target/ide/build-handoff.ide"));
+}
+\`\`\`
+
+Create \`target/ide\` before export, exclude this derived packet from recursive
+Eclipse resource notifications, and select a unique destination per
+invocation rather than attempting to overwrite another invocation's bytes.
+Export is **not** automatic. It rejects non-project paths, symlink paths,
+missing parent directories, and replacement of different bytes.
+
+Wire format: strict UTF-8/LF/no BOM; 12 MiB maximum; original change list
+sorted and unique (at most 65,536); configuration/builder/nature arrays
+bounded to 2,048 each. All identity strings are canonical unpadded Base64URL
+except the canonical UUID, explicit kind/complete and delta path rows.
+
+\`\`\`text
+M3-ECLIPSE-BUILD-HANDOFF-V1
+provider	eclipse.m2e
+project64	<base64url-project>
+invocation	<uuid>
+selected64	<base64url-selected-config>
+active64	<base64url-active-config>
+kind	INCREMENTAL|AUTO|FULL|CLEAN
+complete	true|false
+configuration64	<base64url-config>   (repeat in original Eclipse order)
+builder64	<base64url-builder>    (repeat in original Eclipse order)
+nature64	<base64url-nature>      (repeat in original Eclipse order)
+change	ADDED|MODIFIED|DELETED	<canonical-project-relative-path>  (sorted)
+\`\`\`
+
+Unknown Eclipse builder and nature IDs are retained, so JDT, CDT, RustDT /
+Corrosion, PyDev, PDE/Tycho, Groovy, Kotlin, Scala, LSP4E and future
+language plug-ins do not require hard-coded Java-specific handling. Maven
+owns the portable Java 17 decoder; Gradle delegates through that original
+pinned Maven CLI. The handoff is advisory: toolchain/classpath, model,
+generated-output and dependency completeness are independently required
+for any M3DB state reuse or build acceleration.
