@@ -16,6 +16,7 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -23,7 +24,9 @@ import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
 
+import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IncrementalProjectBuilder;
+import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.OperationCanceledException;
 import org.eclipse.jdt.core.IJavaProject;
@@ -139,6 +142,21 @@ public class M3JdtCompilerFactsTest extends AbstractMavenProjectTestCase {
     } catch (OperationCanceledException expected) {
       // Cancellation belongs to the original Eclipse monitor.
     }
+  }
+
+  /**
+   * The similarly named helper in JavaConfigurationTest is private to that
+   * test class. Use this test's own original m2e import workflow instead of
+   * relying on an inaccessible helper and silently bypassing compilation.
+   */
+  private IJavaProject importResourceProject(String resource) throws Exception {
+    var url = M3JdtCompilerFactsTest.class.getResource(resource);
+    if (url == null) throw new IOException("missing original m2e JDT fixture: " + resource);
+    File pom = new File(FileLocator.toFileURL(url).getFile());
+    waitForJobsToComplete();
+    IProject imported = importProject(pom.getAbsolutePath());
+    waitForJobsToComplete();
+    return JavaCore.create(imported);
   }
 
   private static M3EclipseBuildHandoff.Snapshot handoff(String name) {
